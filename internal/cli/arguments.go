@@ -10,7 +10,7 @@ import (
 // Takes in an excpeted number of positional arguments
 func loadArguments(config *core.Config, n int, flagSet *flag.FlagSet) error {
 	args, err := getArguments(n, flagSet)
-	
+
 	if err != nil {
 		return err
 	}

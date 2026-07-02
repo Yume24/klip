@@ -10,10 +10,9 @@ import (
 // Number of excpeted positional arguments
 const argsNum = 1 // We expect only the url to be a positional argument
 
-
 type parser struct {
 	FlagSet *flag.FlagSet
-	Args []string
+	Args    []string
 }
 
 func NewParser(name string, osargs []string) *parser {
