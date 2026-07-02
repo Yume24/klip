@@ -12,18 +12,18 @@ import (
 // Number of excpeted positional arguments
 const argsNum = 1 // We expect only the url to be a positional argument
 
-type Parser struct {
+type parser struct {
 	flagSet    *flag.FlagSet
 	args       []string
 	usageError *bytes.Buffer
 }
 
-func NewParser(name string, osargs []string) *Parser {
+func createParser(name string, osargs []string) *parser {
 	buffer := &bytes.Buffer{}
 	flagset := flag.NewFlagSet(name, flag.ContinueOnError)
 
 	flagset.SetOutput(buffer)
-	return &Parser{
+	return &parser{
 		flagset,
 		osargs,
 		buffer,
@@ -31,16 +31,17 @@ func NewParser(name string, osargs []string) *Parser {
 }
 
 // Parse CLI arguments and return Config object or an error
-func (p *Parser) ParseArguments() (*core.Config, error) {
+func ParseArguments(name string, osargs []string) (*core.Config, error) {
+	parser := createParser(name, osargs)
 	config := &core.Config{}
 
-	if err := loadFlags(config, p.flagSet, p.args); err != nil {
-		return nil, fmt.Errorf("%s", p.usageError) // err is already included in usageError here
+	if err := loadFlags(config, parser.flagSet, parser.args); err != nil {
+		return nil, fmt.Errorf("%s", parser.usageError) // err is already included in usageError here
 	}
 
-	if err := loadArguments(config, argsNum, p.flagSet); err != nil {
-		p.flagSet.Usage()
-		return nil, fmt.Errorf("%s\n%s", err, p.usageError)
+	if err := loadArguments(config, argsNum, parser.flagSet); err != nil {
+		parser.flagSet.Usage()
+		return nil, fmt.Errorf("%s\n%s", err, parser.usageError)
 	}
 
 	return config, nil

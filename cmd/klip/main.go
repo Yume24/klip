@@ -2,20 +2,17 @@ package main
 
 import (
 	"fmt"
-	"klip/internal/cli"
+	"klip/internal/orchestrator"
 	"os"
 )
 
 const name = "Klip"
 
 func main() {
-	parser := cli.NewParser(name, os.Args[1:]) // First arg is the command itself
-	config, err := parser.ParseArguments()
+	err := orchestrator.Run(name, os.Args[1:]) // First arg is the command itself
 
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(2)
 	}
-
-	fmt.Println(config)
 }
