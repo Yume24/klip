@@ -26,7 +26,7 @@ func getArguments(n int, flagSet *flag.FlagSet) ([]string, error) {
 	argumentsLength := flagSet.NArg()
 
 	if argumentsLength != n {
-		return nil, fmt.Errorf("Excpected %d arguments, got %d", n, argumentsLength)
+		return nil, fmt.Errorf("Excpected %d argument(s), got %d", n, argumentsLength)
 	}
 
 	return flagSet.Args(), nil
