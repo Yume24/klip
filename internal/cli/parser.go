@@ -10,20 +10,20 @@ import (
 // Number of excpeted positional arguments
 const argsNum = 1 // We expect only the url to be a positional argument
 
-type parser struct {
+type Parser struct {
 	FlagSet *flag.FlagSet
 	Args    []string
 }
 
-func NewParser(name string, osargs []string) *parser {
-	return &parser{
+func NewParser(name string, osargs []string) *Parser {
+	return &Parser{
 		flag.NewFlagSet(name, flag.ContinueOnError),
 		osargs,
 	}
 }
 
 // Parse CLI arguments and return Config object or an error
-func (p *parser) ParseArguments() (*core.Config, error) {
+func (p *Parser) ParseArguments() (*core.Config, error) {
 	config := &core.Config{}
 
 	if err := loadFlags(config, p.FlagSet, p.Args); err != nil {
