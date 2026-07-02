@@ -13,8 +13,6 @@ func main() {
 	config, err := parser.ParseArguments()
 
 	if err != nil {
-		fmt.Println(err)
-		parser.FlagSet.Usage()
 		os.Exit(2)
 	}
 
