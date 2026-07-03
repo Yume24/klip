@@ -2,31 +2,36 @@ package discovery
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
 const videoTag = "video"
-const contentTypeHeader = "ContentType"
+const bodyTag = "body"
 
-func captureEventsHandler(event any) {
-	switch event := event.(type) {
-	case *network.EventResponseReceived:
-		fmt.Println(event.Response.Headers[contentTypeHeader])
+func captureEventsHandler(ctx context.Context, ch chan<- networkResponse) func(any) {
+	return func(event any) {
+		if event, ok := event.(*network.EventResponseReceived); ok {
+			select {
+			case ch <- networkResponse{url: event.Response.URL, contentType: event.Response.MimeType}:
+			case <-ctx.Done():
+			}
+		}
 	}
 }
 
-func initializeBrowser(ctx context.Context) (context.Context, context.CancelFunc, error) {
+func initializeBrowser(ctx context.Context) (*browserContext, error) {
+	eventsChan := make(chan networkResponse)
 	ctx, cancel := chromedp.NewContext(ctx)
 
 	if err := chromedp.Run(ctx, network.Enable()); err != nil {
-		return nil, cancel, err
+		cancel()
+		return nil, err
 	}
-	chromedp.ListenTarget(ctx, captureEventsHandler)
+	chromedp.ListenTarget(ctx, captureEventsHandler(ctx, eventsChan))
 
-	return ctx, cancel, nil
+	return &browserContext{ctx, cancel, eventsChan}, nil
 }
 
 func clickVideo(ctx context.Context) error {
@@ -34,5 +39,5 @@ func clickVideo(ctx context.Context) error {
 }
 
 func navigateToPage(ctx context.Context, url string) error {
-	return chromedp.Run(ctx, chromedp.Navigate(url))
+	return chromedp.Run(ctx, chromedp.Navigate(url), chromedp.WaitVisible(bodyTag, chromedp.ByQuery))
 }
