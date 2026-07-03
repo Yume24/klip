@@ -4,3 +4,8 @@ package core
 type Config struct {
 	Url string
 }
+
+type Media struct {
+	Url  string
+	Type string
+}
