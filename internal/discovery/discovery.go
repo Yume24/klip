@@ -2,21 +2,8 @@ package discovery
 
 import (
 	"context"
-	"fmt"
 	"klip/internal/core"
 )
-
-func inspectIncomingTraffic(ctx context.Context, ch <-chan networkResponse, cancel context.CancelFunc) {
-	defer cancel()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case response := <-ch:
-			fmt.Println(response.contentType)
-		}
-	}
-}
 
 func GetMediaUrl(ctx context.Context, pageUrl string) (*core.Media, error) {
 	browserContext, err := initializeBrowser(ctx)
