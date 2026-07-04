@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// App name
 const name = "Klip"
 
 func main() {

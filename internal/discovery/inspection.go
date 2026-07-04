@@ -13,6 +13,7 @@ func checkURL(URL string) bool {
 	return false
 }
 
+// Preidcate for deciding if a given network response is a media manifest
 func isMediaManifest(response networkResponse) bool {
 	return checkContentType(response.contentType) || checkURL(response.url)
 }

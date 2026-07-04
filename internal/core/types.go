@@ -1,6 +1,6 @@
 package core
 
-// Gets filled with user-supplied configuration such as url to fetch etc.
+// User supplied config
 type Config struct {
 	URL string
 }

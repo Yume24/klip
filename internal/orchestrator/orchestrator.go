@@ -8,6 +8,7 @@ import (
 	"klip/internal/discovery"
 )
 
+// Entrypoint to the program's flow
 func Run(name string, args []string) error {
 	config, err := cli.ParseArguments(name, args)
 
@@ -18,7 +19,7 @@ func Run(name string, args []string) error {
 	ctx, stop := context.WithTimeout(context.Background(), core.TimeoutValue)
 	defer stop()
 
-	media, err := discovery.GetMediaURL(ctx, config.URL)
+	media, err := discovery.GetMedia(ctx, config.URL)
 
 	if err != nil {
 		return err

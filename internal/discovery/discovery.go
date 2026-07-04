@@ -6,6 +6,7 @@ import (
 	"klip/internal/core"
 )
 
+// Message returned after the search has timed out
 const timeoutErrorMsg = "timeout: could not locate the video after %d seconds"
 
 func performWebpageFlow(ctx context.Context, pageURL string) error {
@@ -20,6 +21,7 @@ func performWebpageFlow(ctx context.Context, pageURL string) error {
 	return nil
 }
 
+// Function that waits for inspection results
 func waitForMedia(ctx context.Context, result <-chan core.Media) (*core.Media, error) {
 	select {
 	case <-ctx.Done():
@@ -29,7 +31,8 @@ func waitForMedia(ctx context.Context, result <-chan core.Media) (*core.Media, e
 	}
 }
 
-func GetMediaURL(ctx context.Context, pageURL string) (*core.Media, error) {
+// Retruns the Media struct containing information about the discovered media source
+func GetMedia(ctx context.Context, pageURL string) (*core.Media, error) {
 	browserCtx, err := initializeBrowser(ctx)
 
 	if err != nil {

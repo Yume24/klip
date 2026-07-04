@@ -6,6 +6,7 @@ import (
 	"klip/internal/core"
 )
 
+// Position of the URL param in positional args
 const urlPosition = 0
 
 // Load positional arguments into config
