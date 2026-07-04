@@ -12,7 +12,9 @@ func GetMediaUrl(ctx context.Context, pageUrl string) (*core.Media, error) {
 		return nil, err
 	}
 
-	go inspectIncomingTraffic(browserContext.ctx, browserContext.eventsChan, browserContext.cancel)
+	defer browserContext.stop()
+
+	go inspectIncomingTraffic(browserContext.ctx, browserContext.eventsChan)
 
 	if err := navigateToPage(browserContext.ctx, pageUrl); err != nil {
 		return nil, err

@@ -9,6 +9,6 @@ type networkResponse struct {
 
 type browserContext struct {
 	ctx        context.Context
-	cancel     context.CancelFunc
+	stop       context.CancelFunc
 	eventsChan chan networkResponse
 }

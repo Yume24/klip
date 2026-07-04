@@ -24,15 +24,15 @@ func captureEventsHandler(ctx context.Context, ch chan<- networkResponse) func(a
 
 func initializeBrowser(ctx context.Context) (*browserContext, error) {
 	eventsChan := make(chan networkResponse)
-	ctx, cancel := chromedp.NewContext(ctx)
+	ctx, stop := chromedp.NewContext(ctx)
 
 	if err := chromedp.Run(ctx, network.Enable()); err != nil {
-		cancel()
+		stop()
 		return nil, err
 	}
 	chromedp.ListenTarget(ctx, captureEventsHandler(ctx, eventsChan))
 
-	return &browserContext{ctx, cancel, eventsChan}, nil
+	return &browserContext{ctx, stop, eventsChan}, nil
 }
 
 func clickVideo(ctx context.Context) error {

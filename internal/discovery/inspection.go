@@ -5,8 +5,7 @@ import (
 	"fmt"
 )
 
-func inspectIncomingTraffic(ctx context.Context, ch <-chan networkResponse, cancel context.CancelFunc) {
-	defer cancel()
+func inspectIncomingTraffic(ctx context.Context, ch <-chan networkResponse) {
 	for {
 		select {
 		case <-ctx.Done():
