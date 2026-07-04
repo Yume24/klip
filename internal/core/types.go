@@ -2,10 +2,10 @@ package core
 
 // Gets filled with user-supplied configuration such as url to fetch etc.
 type Config struct {
-	Url string
+	URL string
 }
 
 type Media struct {
-	Url  string
+	URL  string
 	Type string
 }

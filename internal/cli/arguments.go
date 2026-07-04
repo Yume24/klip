@@ -17,7 +17,7 @@ func loadArguments(config *core.Config, n int, flagSet *flag.FlagSet) error {
 		return err
 	}
 
-	config.Url = args[urlPosition]
+	config.URL = args[urlPosition]
 	return nil
 }
 

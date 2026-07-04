@@ -6,21 +6,21 @@ import (
 )
 
 func GetMediaUrl(ctx context.Context, pageUrl string) (*core.Media, error) {
-	browserContext, err := initializeBrowser(ctx)
+	browserCtx, err := initializeBrowser(ctx)
 
 	if err != nil {
 		return nil, err
 	}
 
-	defer browserContext.stop()
+	defer browserCtx.stop()
 
-	go inspectIncomingTraffic(browserContext.ctx, browserContext.eventsChan)
+	go inspectIncomingTraffic(browserCtx.ctx, browserCtx.eventsChan)
 
-	if err := navigateToPage(browserContext.ctx, pageUrl); err != nil {
+	if err := navigateToPage(browserCtx.ctx, pageUrl); err != nil {
 		return nil, err
 	}
 
-	if err := clickVideo(browserContext.ctx); err != nil {
+	if err := clickVideo(browserCtx.ctx); err != nil {
 		return nil, err
 	}
 
