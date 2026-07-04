@@ -8,6 +8,7 @@ import (
 
 // Message returned after the search has timed out
 const timeoutErrorMsg = "timeout: could not locate the video after %d seconds"
+var timeoutError = fmt.Errorf(timeoutErrorMsg, int(core.TimeoutValue.Seconds()))
 
 func performWebpageFlow(ctx context.Context, pageURL string) error {
 	if err := navigateToPage(ctx, pageURL); err != nil {
@@ -25,7 +26,7 @@ func performWebpageFlow(ctx context.Context, pageURL string) error {
 func waitForMedia(ctx context.Context, result <-chan core.Media) (*core.Media, error) {
 	select {
 	case <-ctx.Done():
-		return nil, fmt.Errorf(timeoutErrorMsg, int(core.TimeoutValue.Seconds()))
+		return nil, timeoutError
 	case media := <-result:
 		return &media, nil
 	}
@@ -45,7 +46,7 @@ func GetMedia(ctx context.Context, pageURL string) (*core.Media, error) {
 	go inspectIncomingTraffic(browserCtx.ctx, browserCtx.eventsChan, result)
 
 	if err := performWebpageFlow(browserCtx.ctx, pageURL); err != nil {
-		return nil, err
+		return nil, timeoutError
 	}
 
 	return waitForMedia(browserCtx.ctx, result)
