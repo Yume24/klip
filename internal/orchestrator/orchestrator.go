@@ -20,7 +20,7 @@ func Run(name string, args []string) error {
 	ctx, stop := context.WithTimeout(context.Background(), timeoutValue)
 	defer stop()
 
-	media, err := discovery.GetMediaUrl(ctx, config.URL)
+	media, err := discovery.GetMediaURL(ctx, config.URL)
 
 	if err != nil {
 		return err

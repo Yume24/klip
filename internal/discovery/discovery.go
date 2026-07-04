@@ -5,7 +5,7 @@ import (
 	"klip/internal/core"
 )
 
-func GetMediaUrl(ctx context.Context, pageUrl string) (*core.Media, error) {
+func GetMediaURL(ctx context.Context, pageURL string) (*core.Media, error) {
 	browserCtx, err := initializeBrowser(ctx)
 
 	if err != nil {
@@ -16,7 +16,7 @@ func GetMediaUrl(ctx context.Context, pageUrl string) (*core.Media, error) {
 
 	go inspectIncomingTraffic(browserCtx.ctx, browserCtx.eventsChan)
 
-	if err := navigateToPage(browserCtx.ctx, pageUrl); err != nil {
+	if err := navigateToPage(browserCtx.ctx, pageURL); err != nil {
 		return nil, err
 	}
 

@@ -32,7 +32,7 @@ func initializeBrowser(ctx context.Context) (*browserContext, error) {
 	}
 	chromedp.ListenTarget(ctx, captureEventsHandler(ctx, eventsChan))
 
-	return &browserContext{ctx, stop, eventsChan}, nil
+	return &browserContext{ctx: ctx, stop: stop, eventsChan: eventsChan}, nil
 }
 
 func clickVideo(ctx context.Context) error {

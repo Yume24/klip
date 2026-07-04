@@ -20,13 +20,13 @@ type parser struct {
 
 func createParser(name string, osargs []string) *parser {
 	buffer := &bytes.Buffer{}
-	flagset := flag.NewFlagSet(name, flag.ContinueOnError)
+	flags := flag.NewFlagSet(name, flag.ContinueOnError)
 
-	flagset.SetOutput(buffer)
+	flags.SetOutput(buffer)
 	return &parser{
-		flagset,
-		osargs,
-		buffer,
+		flagSet:    flags,
+		args:       osargs,
+		usageError: buffer,
 	}
 }
 
