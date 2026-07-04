@@ -1,19 +1,27 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"klip/internal/orchestrator"
 	"os"
 )
 
-// App name
-const name = "Klip"
+const appName = "Klip"
+const successExitCode = 0
+const errorExitCode = 1
 
 func main() {
-	err := orchestrator.Run(name, os.Args[1:]) // First arg is the command itself
+	err := orchestrator.Run(appName, os.Args[1:]) // First arg is the command itself
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+
+		if errors.Is(err, flag.ErrHelp) {
+			os.Exit(successExitCode)
+		}
+
+		os.Exit(errorExitCode)
 	}
 }

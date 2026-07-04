@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"mime"
 	"net/url"
 
 	"github.com/chromedp/cdproto/network"
@@ -11,22 +12,34 @@ import (
 // Corresponds to <video>
 const videoTag = "video"
 
+func parseNetworkEvent(event *network.EventResponseReceived) (*networkResponse, error) {
+	requestURL, err := url.ParseRequestURI(event.Response.URL)
+	if err != nil {
+		return nil, err
+	}
+
+	contentType, _, _ := mime.ParseMediaType(event.Response.MimeType)
+
+	return &networkResponse{url: *requestURL, contentType: contentType}, nil
+}
+
 // Returns the handler for network events
 func captureEventsHandler(ctx context.Context, ch chan<- networkResponse) func(any) {
 	return func(event any) {
-		go func() {
-			if event, ok := event.(*network.EventResponseReceived); ok {
-				url, err := url.ParseRequestURI(event.Response.URL)
+		if event, ok := event.(*network.EventResponseReceived); ok {
+			go func() {
+				resp, err := parseNetworkEvent(event)
+
 				if err != nil {
 					return
 				}
 
 				select {
-				case ch <- networkResponse{url: *url, contentType: event.Response.MimeType}:
+				case ch <- *resp:
 				case <-ctx.Done():
 				}
-			}
-		}()
+			}()
+		}
 	}
 }
 

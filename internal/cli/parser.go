@@ -36,7 +36,7 @@ func ParseArguments(name string, osargs []string) (*core.Config, error) {
 	config := &core.Config{}
 
 	if err := loadFlags(config, parser.flagSet, parser.args); err != nil {
-		return nil, fmt.Errorf("%s", parser.usageError) // err is already included in usageError here
+		return nil, err
 	}
 
 	if err := loadArguments(config, argsNum, parser.flagSet); err != nil {

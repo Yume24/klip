@@ -8,6 +8,6 @@ type Config struct {
 }
 
 type Media struct {
-	URL  url.URL
+	URL  *url.URL
 	Type string
 }

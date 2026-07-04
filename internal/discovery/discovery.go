@@ -2,13 +2,15 @@ package discovery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"klip/internal/core"
 )
 
 // Message returned after the search has timed out
 const timeoutErrorMsg = "timeout: could not locate the video after %d seconds"
-var timeoutError = fmt.Errorf(timeoutErrorMsg, int(core.TimeoutValue.Seconds()))
+
+var errTimeout = fmt.Errorf(timeoutErrorMsg, int(core.TimeoutValue.Seconds()))
 
 func performWebpageFlow(ctx context.Context, pageURL string) error {
 	if err := navigateToPage(ctx, pageURL); err != nil {
@@ -22,17 +24,16 @@ func performWebpageFlow(ctx context.Context, pageURL string) error {
 	return nil
 }
 
-// Function that waits for inspection results
 func waitForMedia(ctx context.Context, result <-chan core.Media) (*core.Media, error) {
 	select {
 	case <-ctx.Done():
-		return nil, timeoutError
+		return nil, ctx.Err()
 	case media := <-result:
 		return &media, nil
 	}
 }
 
-// Retruns the Media struct containing information about the discovered media source
+// Returns the Media struct containing information about the discovered media source
 func GetMedia(ctx context.Context, pageURL string) (*core.Media, error) {
 	browserCtx, err := initializeBrowser(ctx)
 
@@ -46,7 +47,11 @@ func GetMedia(ctx context.Context, pageURL string) (*core.Media, error) {
 	go inspectIncomingTraffic(browserCtx.ctx, browserCtx.eventsChan, result)
 
 	if err := performWebpageFlow(browserCtx.ctx, pageURL); err != nil {
-		return nil, timeoutError
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, errTimeout
+		}
+
+		return nil, fmt.Errorf("error: %w", err)
 	}
 
 	return waitForMedia(browserCtx.ctx, result)
