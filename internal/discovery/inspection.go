@@ -2,9 +2,20 @@ package discovery
 
 import (
 	"context"
-	"fmt"
 	"klip/internal/core"
 )
+
+func checkContentType(contentType string) bool {
+	return false
+}
+
+func checkURL(URL string) bool {
+	return false
+}
+
+func isMediaManifest(response networkResponse) bool {
+	return checkContentType(response.contentType) || checkURL(response.url)
+}
 
 func inspectIncomingTraffic(ctx context.Context, ch <-chan networkResponse, output chan<- core.Media) {
 	for {
@@ -12,8 +23,7 @@ func inspectIncomingTraffic(ctx context.Context, ch <-chan networkResponse, outp
 		case <-ctx.Done():
 			return
 		case response := <-ch:
-			fmt.Println(response.contentType)
-			if false {
+			if isMediaManifest(response) {
 				output <- core.Media{URL: response.url, Type: response.contentType}
 			}
 		}
