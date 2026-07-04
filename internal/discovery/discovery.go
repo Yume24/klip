@@ -2,8 +2,32 @@ package discovery
 
 import (
 	"context"
+	"fmt"
 	"klip/internal/core"
 )
+
+const timeoutErrorMsg = "timeout: could not locate the video after %d seconds"
+
+func performWebpageFlow(ctx context.Context, pageURL string) error {
+	if err := navigateToPage(ctx, pageURL); err != nil {
+		return err
+	}
+
+	if err := clickVideo(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func waitForMedia(ctx context.Context, result <-chan core.Media) (*core.Media, error) {
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf(timeoutErrorMsg, int(core.TimeoutValue.Seconds()))
+	case <-result:
+		return nil, nil
+	}
+}
 
 func GetMediaURL(ctx context.Context, pageURL string) (*core.Media, error) {
 	browserCtx, err := initializeBrowser(ctx)
@@ -13,16 +37,13 @@ func GetMediaURL(ctx context.Context, pageURL string) (*core.Media, error) {
 	}
 
 	defer browserCtx.stop()
+	result := make(chan core.Media)
 
-	go inspectIncomingTraffic(browserCtx.ctx, browserCtx.eventsChan)
+	go inspectIncomingTraffic(browserCtx.ctx, browserCtx.eventsChan, result)
 
-	if err := navigateToPage(browserCtx.ctx, pageURL); err != nil {
+	if err := performWebpageFlow(browserCtx.ctx, pageURL); err != nil {
 		return nil, err
 	}
 
-	if err := clickVideo(browserCtx.ctx); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	return waitForMedia(browserCtx.ctx, result)
 }

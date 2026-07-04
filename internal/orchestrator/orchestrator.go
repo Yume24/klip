@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"klip/internal/cli"
+	"klip/internal/core"
 	"klip/internal/discovery"
-	"time"
 )
-
-const timeoutValue = time.Second * 60
 
 func Run(name string, args []string) error {
 	config, err := cli.ParseArguments(name, args)
@@ -17,7 +15,7 @@ func Run(name string, args []string) error {
 		return err
 	}
 
-	ctx, stop := context.WithTimeout(context.Background(), timeoutValue)
+	ctx, stop := context.WithTimeout(context.Background(), core.TimeoutValue)
 	defer stop()
 
 	media, err := discovery.GetMediaURL(ctx, config.URL)
