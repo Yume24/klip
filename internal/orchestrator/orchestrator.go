@@ -24,6 +24,6 @@ func Run(name string, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(media)
+	fmt.Println(media.URL.String())
 	return nil
 }

@@ -3,14 +3,23 @@ package discovery
 import (
 	"context"
 	"klip/internal/core"
+	"net/url"
+	"strings"
 )
 
-func checkContentType(contentType string) bool {
-	return false
+const manifestExtension = ".m3u8"
+
+var relevantContentTypes = map[string]bool{
+	"application/vnd.apple.mpegurl": true,
+	"application/x-mpegurl ":        true,
 }
 
-func checkURL(URL string) bool {
-	return false
+func checkContentType(contentType string) bool {
+	return relevantContentTypes[contentType]
+}
+
+func checkURL(URL url.URL) bool {
+	return strings.HasSuffix(URL.Path, manifestExtension)
 }
 
 // Preidcate for deciding if a given network response is a media manifest

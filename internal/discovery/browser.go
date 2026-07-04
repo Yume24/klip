@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
@@ -15,8 +16,13 @@ func captureEventsHandler(ctx context.Context, ch chan<- networkResponse) func(a
 	return func(event any) {
 		go func() {
 			if event, ok := event.(*network.EventResponseReceived); ok {
+				url, err := url.ParseRequestURI(event.Response.URL)
+				if err != nil {
+					return
+				}
+
 				select {
-				case ch <- networkResponse{url: event.Response.URL, contentType: event.Response.MimeType}:
+				case ch <- networkResponse{url: *url, contentType: event.Response.MimeType}:
 				case <-ctx.Done():
 				}
 			}

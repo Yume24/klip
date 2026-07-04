@@ -1,10 +1,13 @@
 package discovery
 
-import "context"
+import (
+	"context"
+	"net/url"
+)
 
 // Carries the relevant information about the network response
 type networkResponse struct {
-	url         string
+	url         url.URL
 	contentType string
 }
 

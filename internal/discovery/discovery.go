@@ -26,8 +26,8 @@ func waitForMedia(ctx context.Context, result <-chan core.Media) (*core.Media, e
 	select {
 	case <-ctx.Done():
 		return nil, fmt.Errorf(timeoutErrorMsg, int(core.TimeoutValue.Seconds()))
-	case <-result:
-		return nil, nil
+	case media := <-result:
+		return &media, nil
 	}
 }
 
