@@ -41,7 +41,7 @@ func ParseArguments(name string, osargs []string) (*core.Config, error) {
 
 	if err := loadArguments(config, argsNum, parser.flagSet); err != nil {
 		parser.flagSet.Usage()
-		return nil, fmt.Errorf("%s\n%s", err, parser.usageError)
+		return nil, fmt.Errorf("%w\n%s", err, parser.usageError)
 	}
 
 	return config, nil

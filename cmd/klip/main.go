@@ -12,7 +12,7 @@ func main() {
 	err := orchestrator.Run(name, os.Args[1:]) // First arg is the command itself
 
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 }

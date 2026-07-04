@@ -6,8 +6,10 @@ import (
 	"klip/internal/core"
 )
 
+const urlPosition = 0
+
 // Load positional arguments into config
-// Takes in an excpeted number of positional arguments
+// Takes in an excpected number of positional arguments
 func loadArguments(config *core.Config, n int, flagSet *flag.FlagSet) error {
 	args, err := getArguments(n, flagSet)
 
@@ -15,18 +17,18 @@ func loadArguments(config *core.Config, n int, flagSet *flag.FlagSet) error {
 		return err
 	}
 
-	config.Url = args[0]
+	config.Url = args[urlPosition]
 	return nil
 }
 
-// Gets the remaning positional arguments after parsing
-// Takes in an excpeted number of positional arguments
+// Gets the remaining positional arguments after parsing
+// Takes in an expected number of positional arguments
 // and returns an error if the actual number does not match.
 func getArguments(n int, flagSet *flag.FlagSet) ([]string, error) {
 	argumentsLength := flagSet.NArg()
 
 	if argumentsLength != n {
-		return nil, fmt.Errorf("Excpected %d argument(s), got %d", n, argumentsLength)
+		return nil, fmt.Errorf("excpected %d argument(s), got %d", n, argumentsLength)
 	}
 
 	return flagSet.Args(), nil

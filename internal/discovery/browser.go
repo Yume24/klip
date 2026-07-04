@@ -8,16 +8,17 @@ import (
 )
 
 const videoTag = "video"
-const bodyTag = "body"
 
 func captureEventsHandler(ctx context.Context, ch chan<- networkResponse) func(any) {
 	return func(event any) {
-		if event, ok := event.(*network.EventResponseReceived); ok {
-			select {
-			case ch <- networkResponse{url: event.Response.URL, contentType: event.Response.MimeType}:
-			case <-ctx.Done():
+		go func() {
+			if event, ok := event.(*network.EventResponseReceived); ok {
+				select {
+				case ch <- networkResponse{url: event.Response.URL, contentType: event.Response.MimeType}:
+				case <-ctx.Done():
+				}
 			}
-		}
+		}()
 	}
 }
 
@@ -39,5 +40,5 @@ func clickVideo(ctx context.Context) error {
 }
 
 func navigateToPage(ctx context.Context, url string) error {
-	return chromedp.Run(ctx, chromedp.Navigate(url), chromedp.WaitVisible(bodyTag, chromedp.ByQuery))
+	return chromedp.Run(ctx, chromedp.Navigate(url), chromedp.WaitVisible(videoTag, chromedp.ByQuery))
 }

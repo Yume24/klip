@@ -12,8 +12,6 @@ func GetMediaUrl(ctx context.Context, pageUrl string) (*core.Media, error) {
 		return nil, err
 	}
 
-	defer browserContext.cancel()
-
 	go inspectIncomingTraffic(browserContext.ctx, browserContext.eventsChan, browserContext.cancel)
 
 	if err := navigateToPage(browserContext.ctx, pageUrl); err != nil {
