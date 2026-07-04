@@ -1,4 +1,4 @@
-// Responsible for parsing CLI arguements and returning the Config object
+// Responsible for parsing CLI arguments and returning the Config object
 // or an error if any
 package cli
 
@@ -9,7 +9,7 @@ import (
 	"klip/internal/core"
 )
 
-// Number of excpeted positional arguments
+// Number of expected positional arguments
 const argsNum = 1 // We expect only the url to be a positional argument
 
 type parser struct {
