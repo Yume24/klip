@@ -11,7 +11,6 @@ import (
 // Number of expected positional arguments
 const argsNum = 1 // We expect only the url to be a positional argument
 
-
 // Parse CLI arguments and return Config object or an error
 func ParseArguments(name string, osargs []string) (*core.Config, error) {
 	parser := createParser(name, osargs)
