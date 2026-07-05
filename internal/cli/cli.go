@@ -19,11 +19,15 @@ type parser struct {
 	usageError *bytes.Buffer
 }
 
-func (p *parser) getErrorWithUsage(e error) error {
+func (p *parser) usage() string {
 	p.usageError.Reset()
 	p.flagSet.Usage()
 
-	return fmt.Errorf("%w\n%s", e, p.usageError)
+	return p.usageError.String()
+}
+
+func (p *parser) wrapErrorWithUsage(e error) error {
+	return fmt.Errorf("%w\n%s", e, p.usage())
 }
 
 func createParser(name string, osargs []string) *parser {
@@ -45,13 +49,13 @@ func ParseArguments(name string, osargs []string) (*core.Config, error) {
 
 	if err := loadFlagsIntoConfig(config, parser.flagSet, parser.args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			return nil, &helpError{usageMessage: parser.usageError.String()}
+			return nil, &helpError{usageMessage: parser.usage()}
 		}
-		return nil, parser.getErrorWithUsage(err)
+		return nil, parser.wrapErrorWithUsage(err)
 	}
 
 	if err := loadArgumentsIntoConfig(config, argsNum, parser.flagSet); err != nil {
-		return nil, parser.getErrorWithUsage(err)
+		return nil, parser.wrapErrorWithUsage(err)
 	}
 
 	return config, nil

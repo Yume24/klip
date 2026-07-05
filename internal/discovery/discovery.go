@@ -27,7 +27,7 @@ func performWebpageFlow(ctx context.Context, pageURL string) error {
 func waitForMedia(ctx context.Context, result <-chan core.Media) (*core.Media, error) {
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, errTimeout
 	case media := <-result:
 		return &media, nil
 	}
@@ -51,7 +51,7 @@ func GetMedia(ctx context.Context, pageURL string) (*core.Media, error) {
 			return nil, errTimeout
 		}
 
-		return nil, fmt.Errorf("error: %w", err)
+		return nil, fmt.Errorf("loading page: %w", err)
 	}
 
 	return waitForMedia(browserCtx.ctx, result)
