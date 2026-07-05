@@ -34,19 +34,19 @@ func waitForMedia(ctx context.Context, result <-chan core.Media) (*core.Media, e
 }
 
 // Returns the Media struct containing information about the discovered media source
-func GetMedia(ctx context.Context, pageURL string) (*core.Media, error) {
-	browserCtx, err := initializeBrowser(ctx)
-
+func GetMedia(pageURL string) (*core.Media, error) {
+	browserCtx, cleanup, eventsChan, err := initializeBrowser()
 	if err != nil {
 		return nil, err
 	}
 
-	defer browserCtx.stop()
+	defer cleanup()
+
 	result := make(chan core.Media)
 
-	go inspectIncomingTraffic(browserCtx.ctx, browserCtx.eventsChan, result)
+	go inspectIncomingTraffic(browserCtx, eventsChan, result)
 
-	if err := performWebpageFlow(browserCtx.ctx, pageURL); err != nil {
+	if err := performWebpageFlow(browserCtx, pageURL); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, errTimeout
 		}
@@ -54,5 +54,5 @@ func GetMedia(ctx context.Context, pageURL string) (*core.Media, error) {
 		return nil, fmt.Errorf("loading page: %w", err)
 	}
 
-	return waitForMedia(browserCtx.ctx, result)
+	return waitForMedia(browserCtx, result)
 }

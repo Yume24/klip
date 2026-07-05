@@ -7,20 +7,20 @@ import (
 )
 
 type parser struct {
-	flagSet    *flag.FlagSet
-	args       []string
-	usageError *bytes.Buffer
+	flagSet  *flag.FlagSet
+	args     []string
+	usageBuf *bytes.Buffer
 }
 
-func (p *parser) usage() string {
-	p.usageError.Reset()
+func (p *parser) renderUsage() string {
+	p.usageBuf.Reset()
 	p.flagSet.Usage()
 
-	return p.usageError.String()
+	return p.usageBuf.String()
 }
 
 func (p *parser) wrapErrorWithUsage(e error) error {
-	return fmt.Errorf("%w\n%s", e, p.usage())
+	return fmt.Errorf("%w\n%s", e, p.renderUsage())
 }
 
 func createParser(name string, osargs []string) *parser {
@@ -29,8 +29,8 @@ func createParser(name string, osargs []string) *parser {
 
 	flags.SetOutput(buffer)
 	return &parser{
-		flagSet:    flags,
-		args:       osargs,
-		usageError: buffer,
+		flagSet:  flags,
+		args:     osargs,
+		usageBuf: buffer,
 	}
 }

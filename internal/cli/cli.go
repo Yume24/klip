@@ -8,9 +8,6 @@ import (
 	"klip/internal/core"
 )
 
-// Number of expected positional arguments
-const argsNum = 1 // We expect only the url to be a positional argument
-
 // Parse CLI arguments and return Config object or an error
 func ParseArguments(name string, osargs []string) (*core.Config, error) {
 	parser := createParser(name, osargs)
@@ -18,12 +15,12 @@ func ParseArguments(name string, osargs []string) (*core.Config, error) {
 
 	if err := loadFlagsIntoConfig(config, parser.flagSet, parser.args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			return nil, &helpError{usageMessage: parser.usage()}
+			return nil, &helpError{usageMessage: parser.renderUsage()}
 		}
 		return nil, parser.wrapErrorWithUsage(err)
 	}
 
-	if err := loadArgumentsIntoConfig(config, argsNum, parser.flagSet); err != nil {
+	if err := loadURLIntoConfig(config, parser.flagSet); err != nil {
 		return nil, parser.wrapErrorWithUsage(err)
 	}
 

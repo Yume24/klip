@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"klip/internal/core"
 	"mime"
 	"net/url"
 
@@ -43,18 +44,31 @@ func captureEventsHandler(ctx context.Context, ch chan<- networkResponse) func(a
 	}
 }
 
+func initializeContext() (context.Context, context.CancelFunc) {
+	timeoutCtx, stopTimeoutCtx := context.WithTimeout(context.Background(), core.TimeoutValue)
+	ctx, stopBrowserCtx := chromedp.NewContext(timeoutCtx)
+
+	cleanup := func() {
+		stopBrowserCtx()
+		stopTimeoutCtx()
+	}
+
+	return ctx, cleanup
+}
+
 // Initializes the headless browser and network event capturing
-func initializeBrowser(ctx context.Context) (*browserContext, error) {
+func initializeBrowser() (context.Context, context.CancelFunc, <-chan networkResponse, error) {
 	eventsChan := make(chan networkResponse)
-	ctx, stop := chromedp.NewContext(ctx)
+
+	ctx, cleanup := initializeContext()
 
 	if err := chromedp.Run(ctx, network.Enable()); err != nil {
-		stop()
-		return nil, err
+		cleanup()
+		return nil, nil, nil, err
 	}
 	chromedp.ListenTarget(ctx, captureEventsHandler(ctx, eventsChan))
 
-	return &browserContext{ctx: ctx, stop: stop, eventsChan: eventsChan}, nil
+	return ctx, cleanup, eventsChan, nil
 }
 
 // Clicks on the video tag

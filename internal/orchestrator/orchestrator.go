@@ -1,10 +1,8 @@
 package orchestrator
 
 import (
-	"context"
 	"fmt"
 	"klip/internal/cli"
-	"klip/internal/core"
 	"klip/internal/discovery"
 )
 
@@ -16,10 +14,7 @@ func Run(name string, args []string) error {
 		return err
 	}
 
-	ctx, stop := context.WithTimeout(context.Background(), core.TimeoutValue)
-	defer stop()
-
-	media, err := discovery.GetMedia(ctx, config.URL)
+	media, err := discovery.GetMedia(config.URL)
 
 	if err != nil {
 		return err

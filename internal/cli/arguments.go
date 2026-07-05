@@ -8,29 +8,26 @@ import (
 
 // Position of the URL param in positional args
 const urlPosition = 0
+const expectedArgumentNumber = 1
 
 // Load positional arguments into config
 // Takes in an expected number of positional arguments
-func loadArgumentsIntoConfig(config *core.Config, n int, flagSet *flag.FlagSet) error {
-	args, err := getNArgumentsFromFlagSet(n, flagSet)
+func loadURLIntoConfig(config *core.Config, flagSet *flag.FlagSet) error {
 
-	if err != nil {
+	if err := validateArgumentsLength(flagSet); err != nil {
 		return err
 	}
 
-	config.URL = args[urlPosition]
+	config.URL = flagSet.Arg(urlPosition)
 	return nil
 }
 
-// Gets the remaining positional arguments after parsing
-// Takes in an expected number of positional arguments
-// and returns an error if the actual number does not match.
-func getNArgumentsFromFlagSet(n int, flagSet *flag.FlagSet) ([]string, error) {
+func validateArgumentsLength(flagSet *flag.FlagSet) error {
 	argumentsLength := flagSet.NArg()
 
-	if argumentsLength != n {
-		return nil, fmt.Errorf("expected %d argument(s), got %d", n, argumentsLength)
+	if argumentsLength != expectedArgumentNumber {
+		return fmt.Errorf("expected %d argument(s), got %d", expectedArgumentNumber, argumentsLength)
 	}
 
-	return flagSet.Args(), nil
+	return nil
 }
