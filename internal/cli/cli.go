@@ -20,6 +20,9 @@ type parser struct {
 }
 
 func (p *parser) getErrorWithUsage(e error) error {
+	p.usageError.Reset()
+	p.flagSet.Usage()
+
 	return fmt.Errorf("%w\n%s", e, p.usageError)
 }
 
@@ -48,7 +51,6 @@ func ParseArguments(name string, osargs []string) (*core.Config, error) {
 	}
 
 	if err := loadArgumentsIntoConfig(config, argsNum, parser.flagSet); err != nil {
-		parser.flagSet.Usage()
 		return nil, parser.getErrorWithUsage(err)
 	}
 
