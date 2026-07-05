@@ -2,26 +2,34 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"klip/internal/orchestrator"
 	"os"
 )
 
 const appName = "Klip"
-const successExitCode = 0
 const errorExitCode = 1
+const successExitCode = 0
+
+type exitCoder interface {
+	error
+	ExitCode() int
+}
 
 func main() {
 	err := orchestrator.Run(appName, os.Args[1:]) // First arg is the command itself
 
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		w := os.Stderr
+		code := errorExitCode
 
-		if errors.Is(err, flag.ErrHelp) {
-			os.Exit(successExitCode)
+		if withCodeError, ok := errors.AsType[exitCoder](err); ok {
+			code = withCodeError.ExitCode()
+			if code == successExitCode {
+				w = os.Stdout
+			}
 		}
-
-		os.Exit(errorExitCode)
+		fmt.Fprintln(w, err)
+		os.Exit(code)
 	}
 }

@@ -4,6 +4,7 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"klip/internal/core"
@@ -16,6 +17,10 @@ type parser struct {
 	flagSet    *flag.FlagSet
 	args       []string
 	usageError *bytes.Buffer
+}
+
+func (p *parser) getErrorWithUsage(e error) error {
+	return fmt.Errorf("%w\n%s", e, p.usageError)
 }
 
 func createParser(name string, osargs []string) *parser {
@@ -35,13 +40,16 @@ func ParseArguments(name string, osargs []string) (*core.Config, error) {
 	parser := createParser(name, osargs)
 	config := &core.Config{}
 
-	if err := loadFlags(config, parser.flagSet, parser.args); err != nil {
-		return nil, err
+	if err := loadFlagsIntoConfig(config, parser.flagSet, parser.args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil, &helpError{usageMessage: parser.usageError.String()}
+		}
+		return nil, parser.getErrorWithUsage(err)
 	}
 
-	if err := loadArguments(config, argsNum, parser.flagSet); err != nil {
+	if err := loadArgumentsIntoConfig(config, argsNum, parser.flagSet); err != nil {
 		parser.flagSet.Usage()
-		return nil, fmt.Errorf("%w\n%s", err, parser.usageError)
+		return nil, parser.getErrorWithUsage(err)
 	}
 
 	return config, nil

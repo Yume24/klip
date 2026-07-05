@@ -11,8 +11,8 @@ const urlPosition = 0
 
 // Load positional arguments into config
 // Takes in an expected number of positional arguments
-func loadArguments(config *core.Config, n int, flagSet *flag.FlagSet) error {
-	args, err := getArguments(n, flagSet)
+func loadArgumentsIntoConfig(config *core.Config, n int, flagSet *flag.FlagSet) error {
+	args, err := getNArgumentsFromFlagSet(n, flagSet)
 
 	if err != nil {
 		return err
@@ -25,7 +25,7 @@ func loadArguments(config *core.Config, n int, flagSet *flag.FlagSet) error {
 // Gets the remaining positional arguments after parsing
 // Takes in an expected number of positional arguments
 // and returns an error if the actual number does not match.
-func getArguments(n int, flagSet *flag.FlagSet) ([]string, error) {
+func getNArgumentsFromFlagSet(n int, flagSet *flag.FlagSet) ([]string, error) {
 	argumentsLength := flagSet.NArg()
 
 	if argumentsLength != n {
