@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"context"
-	"klip/internal/core"
 	"mime"
 	"net/url"
 
@@ -10,8 +9,6 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-// Corresponds to <video>
-const videoTag = "video"
 const networkResponseChannelSize = 64
 
 func parseNetworkEvent(event *network.EventResponseReceived) (*networkResponse, error) {
@@ -48,15 +45,10 @@ func captureEventsHandler(ctx context.Context, ch chan<- networkResponse) func(a
 }
 
 func initializeContext() (context.Context, context.CancelFunc) {
-	timeoutCtx, stopTimeoutCtx := context.WithTimeout(context.Background(), core.TimeoutValue)
-	ctx, stopBrowserCtx := chromedp.NewContext(timeoutCtx)
+	ctx := context.Background()
+	ctx, stopBrowserCtx := chromedp.NewContext(ctx)
 
-	cleanup := func() {
-		stopBrowserCtx()
-		stopTimeoutCtx()
-	}
-
-	return ctx, cleanup
+	return ctx, stopBrowserCtx
 }
 
 // Initializes the headless browser and network event capturing
@@ -72,14 +64,4 @@ func initializeBrowser() (context.Context, context.CancelFunc, <-chan networkRes
 	chromedp.ListenTarget(ctx, captureEventsHandler(ctx, eventsChan))
 
 	return ctx, cleanup, eventsChan, nil
-}
-
-// Clicks on the video tag
-func clickVideo(ctx context.Context) error {
-	return chromedp.Run(ctx, chromedp.Click(videoTag, chromedp.ByQuery))
-}
-
-// Navigates to the specified page
-func navigateToPage(ctx context.Context, url string) error {
-	return chromedp.Run(ctx, chromedp.Navigate(url), chromedp.WaitVisible(videoTag, chromedp.ByQuery))
 }

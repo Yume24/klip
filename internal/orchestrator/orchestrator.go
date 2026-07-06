@@ -3,8 +3,17 @@ package orchestrator
 import (
 	"fmt"
 	"klip/internal/cli"
+	"klip/internal/core"
 	"klip/internal/discovery"
 )
+
+func decideDiscoveryStrategy(config *core.Config) discovery.Discoverer {
+	if config.Interactive {
+		return discovery.InteractiveDiscoverer{}
+	}
+
+	return discovery.AutoDiscoverer{}
+}
 
 // Entrypoint to the program's flow
 func Run(name string, args []string) error {
@@ -14,7 +23,8 @@ func Run(name string, args []string) error {
 		return err
 	}
 
-	url, err := discovery.DiscoverManifestURL(config.URL)
+	discoverer := decideDiscoveryStrategy(config)
+	url, err := discovery.DiscoverManifestURL(config.URL, discoverer)
 
 	if err != nil {
 		return err
