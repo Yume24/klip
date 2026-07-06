@@ -1,5 +1,3 @@
-// Responsible for parsing CLI arguments and returning the Config object
-// or an error if any
 package cli
 
 import (
@@ -8,7 +6,6 @@ import (
 	"klip/internal/core"
 )
 
-// Parse CLI arguments and return Config object or an error
 func ParseArguments(name string, osargs []string) (*core.Config, error) {
 	parser := createParser(name, osargs)
 	config := &core.Config{}

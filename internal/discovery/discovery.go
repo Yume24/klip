@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"klip/internal/core"
+	"net/url"
 )
 
 // Message returned after the search has timed out
@@ -24,27 +25,27 @@ func performWebpageFlow(ctx context.Context, pageURL string) error {
 	return nil
 }
 
-func waitForMedia(ctx context.Context, result <-chan core.Media) (*core.Media, error) {
+func waitForURL(ctx context.Context, result <-chan *url.URL) (*url.URL, error) {
 	select {
 	case <-ctx.Done():
 		return nil, errTimeout
-	case media := <-result:
-		return &media, nil
+	case url := <-result:
+		return url, nil
 	}
 }
 
-// Returns the Media struct containing information about the discovered media source
-func GetMedia(pageURL string) (*core.Media, error) {
-	browserCtx, cleanup, eventsChan, err := initializeBrowser()
+// Returns the URL pointing to video manifest
+func DiscoverManifestURL(pageURL string) (*url.URL, error) {
+	browserCtx, cleanup, networkEvents, err := initializeBrowser()
 	if err != nil {
 		return nil, err
 	}
 
 	defer cleanup()
 
-	result := make(chan core.Media)
+	manifests := make(chan *url.URL)
 
-	go inspectIncomingTraffic(browserCtx, eventsChan, result)
+	go inspectIncomingTraffic(browserCtx, networkEvents, manifests)
 
 	if err := performWebpageFlow(browserCtx, pageURL); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -54,5 +55,5 @@ func GetMedia(pageURL string) (*core.Media, error) {
 		return nil, fmt.Errorf("loading page: %w", err)
 	}
 
-	return waitForMedia(browserCtx, result)
+	return waitForURL(browserCtx, manifests)
 }

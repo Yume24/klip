@@ -6,6 +6,6 @@ import (
 
 // Carries the relevant information about the network response
 type networkResponse struct {
-	url         url.URL
+	url         *url.URL
 	contentType string
 }

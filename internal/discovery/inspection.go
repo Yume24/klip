@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"context"
-	"klip/internal/core"
 	"net/url"
 	"strings"
 )
@@ -18,7 +17,7 @@ func hasManifestContentType(contentType string) bool {
 	return relevantContentTypes[contentType]
 }
 
-func hasManifestURLSuffix(url url.URL) bool {
+func hasManifestURLSuffix(url *url.URL) bool {
 	return strings.HasSuffix(url.Path, manifestExtension)
 }
 
@@ -27,7 +26,7 @@ func isMediaManifest(response networkResponse) bool {
 	return hasManifestContentType(response.contentType) || hasManifestURLSuffix(response.url)
 }
 
-func inspectIncomingTraffic(ctx context.Context, ch <-chan networkResponse, output chan<- core.Media) {
+func inspectIncomingTraffic(ctx context.Context, ch <-chan networkResponse, output chan<- *url.URL) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -35,7 +34,7 @@ func inspectIncomingTraffic(ctx context.Context, ch <-chan networkResponse, outp
 		case response := <-ch:
 			if isMediaManifest(response) {
 				select {
-				case output <- core.Media{URL: &response.url, Type: response.contentType}:
+				case output <- response.url:
 				case <-ctx.Done():
 					return
 				}

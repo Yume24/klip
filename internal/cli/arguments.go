@@ -6,12 +6,9 @@ import (
 	"klip/internal/core"
 )
 
-// Position of the URL param in positional args
 const urlPosition = 0
 const expectedArgumentNumber = 1
 
-// Load positional arguments into config
-// Takes in an expected number of positional arguments
 func loadURLIntoConfig(config *core.Config, flagSet *flag.FlagSet) error {
 
 	if err := validateArgumentsLength(flagSet); err != nil {

@@ -14,11 +14,11 @@ func Run(name string, args []string) error {
 		return err
 	}
 
-	media, err := discovery.GetMedia(config.URL)
+	url, err := discovery.DiscoverManifestURL(config.URL)
 
 	if err != nil {
 		return err
 	}
-	fmt.Println(media.URL.String())
+	fmt.Println(url.String())
 	return nil
 }
