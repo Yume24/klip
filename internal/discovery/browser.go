@@ -10,6 +10,7 @@ import (
 )
 
 const networkResponseChannelSize = 64
+const headlessFlag = "headless"
 
 func parseNetworkEvent(event *network.EventResponseReceived) (*networkResponse, error) {
 	requestURL, err := url.ParseRequestURI(event.Response.URL)
@@ -44,18 +45,24 @@ func captureEventsHandler(ctx context.Context, ch chan<- networkResponse) func(a
 	}
 }
 
-func initializeContext() (context.Context, context.CancelFunc) {
-	ctx := context.Background()
-	ctx, stopBrowserCtx := chromedp.NewContext(ctx)
+func initializeContext(isHeadless bool) (context.Context, context.CancelFunc) {
+	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag(headlessFlag, isHeadless))
+	acxt, stopActx := chromedp.NewExecAllocator(context.Background(), opts...)
+	ctx, stopCtx := chromedp.NewContext(acxt)
 
-	return ctx, stopBrowserCtx
+	cleanup := func() {
+		stopCtx()
+		stopActx()
+	}
+
+	return ctx, cleanup
 }
 
 // Initializes the headless browser and network event capturing
-func initializeBrowser() (context.Context, context.CancelFunc, <-chan networkResponse, error) {
+func initializeBrowser(isHeadless bool) (context.Context, context.CancelFunc, <-chan networkResponse, error) {
 	eventsChan := make(chan networkResponse, networkResponseChannelSize)
 
-	ctx, cleanup := initializeContext()
+	ctx, cleanup := initializeContext(isHeadless)
 
 	if err := chromedp.Run(ctx, network.Enable()); err != nil {
 		cleanup()
