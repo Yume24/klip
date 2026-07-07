@@ -25,7 +25,7 @@ func (InteractiveDiscoverer) discoverMediaManifest(ctx context.Context, pageURL 
 
 	// alert() blocks until the user dismisses it
 	// that dismissal is the signal to close the browser and finish
-	chromedp.Run(ctx, chromedp.Evaluate(jsAlert, nil))
+	_ = chromedp.Run(ctx, chromedp.Evaluate(jsAlert, nil))
 	return manifest, nil
 }
 

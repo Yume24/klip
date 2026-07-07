@@ -29,7 +29,7 @@ func main() {
 				w = os.Stdout
 			}
 		}
-		fmt.Fprintln(w, err)
+		_, _ = fmt.Fprintln(w, err)
 		os.Exit(code)
 	}
 }
