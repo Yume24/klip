@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"context"
-	"errors"
 	"net/url"
 
 	"github.com/chromedp/chromedp"
@@ -12,24 +11,25 @@ type InteractiveDiscoverer struct{}
 
 const jsAlert = "alert(\"You can close this window now\")"
 
-func (InteractiveDiscoverer) discoverMediaManifest(ctx context.Context, pageURL string, urls <-chan *url.URL) (*url.URL, error) {
+func (InteractiveDiscoverer) discoverMediaManifest(ctx context.Context, pageURL string, manifests <-chan *url.URL) (*url.URL, error) {
 	if err := chromedp.Run(ctx, chromedp.Navigate(pageURL)); err != nil {
 		return nil, err
 	}
-	manifest, err := waitForURL(ctx, urls)
 
-	if err != nil {
-		return nil, err
+	var manifest *url.URL
+	select {
+	case manifest = <-manifests:
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 
 	if err := chromedp.Run(ctx, chromedp.Evaluate(jsAlert, nil)); err != nil {
-		if errors.Is(err, context.Canceled) {
-			return manifest, nil
-		}
-		return nil, err
+		// We can ignore any error at this stage
+		return manifest, nil
 	}
 
-	return manifest, err
+	<-ctx.Done()
+	return manifest, nil
 }
 
 func (InteractiveDiscoverer) isHeadless() bool {

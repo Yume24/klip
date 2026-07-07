@@ -1,31 +1,39 @@
 package discovery
 
 import (
-	"context"
 	"net/url"
+
+	"github.com/chromedp/cdproto/network"
 )
+
+const manifestsChanSize = 1
+
+func createEventHandler(manifests chan<- *url.URL) networkEventHandler {
+	return func(event *network.EventResponseReceived) {
+		if isMediaManifest(event) {
+			parsedUrl, err := url.Parse(event.Response.URL)
+			if err != nil {
+				return
+			}
+
+			select {
+			case manifests <- parsedUrl:
+			default:
+			}
+		}
+	}
+}
 
 // Returns the URL pointing to video manifest
 func DiscoverManifestURL(pageURL string, discoverer Discoverer) (*url.URL, error) {
-	browserCtx, cleanup, networkEvents, err := initializeBrowser(discoverer.isHeadless())
+	manifests := make(chan *url.URL, manifestsChanSize)
+
+	browserCtx, cleanup, err := initializeBrowser(discoverer.isHeadless(), createEventHandler(manifests))
 	if err != nil {
 		return nil, err
 	}
 
 	defer cleanup()
 
-	manifests := make(chan *url.URL)
-
-	go inspectIncomingTraffic(browserCtx, networkEvents, manifests)
-
 	return discoverer.discoverMediaManifest(browserCtx, pageURL, manifests)
-}
-
-func waitForURL(ctx context.Context, result <-chan *url.URL) (*url.URL, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case url := <-result:
-		return url, nil
-	}
 }

@@ -1,9 +1,9 @@
 package discovery
 
 import (
-	"context"
-	"net/url"
 	"strings"
+
+	"github.com/chromedp/cdproto/network"
 )
 
 const manifestExtension = ".m3u8"
@@ -17,28 +17,11 @@ func hasManifestContentType(contentType string) bool {
 	return relevantContentTypes[contentType]
 }
 
-func hasManifestURLSuffix(url *url.URL) bool {
-	return strings.HasSuffix(url.Path, manifestExtension)
+func hasManifestURLSuffix(url string) bool {
+	return strings.HasSuffix(url, manifestExtension)
 }
 
 // Predicate for deciding if a given network response is a media manifest
-func isMediaManifest(response networkResponse) bool {
-	return hasManifestContentType(response.contentType) || hasManifestURLSuffix(response.url)
-}
-
-func inspectIncomingTraffic(ctx context.Context, ch <-chan networkResponse, output chan<- *url.URL) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case response := <-ch:
-			if isMediaManifest(response) {
-				select {
-				case output <- response.url:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}
-	}
+func isMediaManifest(response *network.EventResponseReceived) bool {
+	return hasManifestContentType(response.Response.MimeType) || hasManifestURLSuffix(response.Response.URL)
 }

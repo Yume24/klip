@@ -6,6 +6,6 @@ import (
 )
 
 type Discoverer interface {
-	discoverMediaManifest(ctx context.Context, pageURL string, urls <-chan *url.URL) (*url.URL, error)
+	discoverMediaManifest(ctx context.Context, pageURL string, manifests <-chan *url.URL) (*url.URL, error)
 	isHeadless() bool
 }

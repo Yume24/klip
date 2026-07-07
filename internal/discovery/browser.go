@@ -2,73 +2,45 @@ package discovery
 
 import (
 	"context"
-	"mime"
-	"net/url"
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
-const networkResponseChannelSize = 64
 const headlessFlag = "headless"
 
-func parseNetworkEvent(event *network.EventResponseReceived) (*networkResponse, error) {
-	requestURL, err := url.ParseRequestURI(event.Response.URL)
-	if err != nil {
-		return nil, err
-	}
+type networkEventHandler func(*network.EventResponseReceived)
 
-	contentType, _, _ := mime.ParseMediaType(event.Response.MimeType)
-
-	return &networkResponse{url: requestURL, contentType: contentType}, nil
-}
-
-func sendResponseToChannel(ctx context.Context, ch chan<- networkResponse, resp *networkResponse) {
-	select {
-	case ch <- *resp:
-	case <-ctx.Done():
-	}
-}
-
-// Returns the handler for network events
-func captureEventsHandler(ctx context.Context, ch chan<- networkResponse) func(any) {
+func createNetworkEventsHandler(handler networkEventHandler) func(any) {
 	return func(event any) {
 		if event, ok := event.(*network.EventResponseReceived); ok {
-			resp, err := parseNetworkEvent(event)
-
-			if err != nil {
-				return
-			}
-
-			go sendResponseToChannel(ctx, ch, resp)
+			handler(event)
 		}
 	}
 }
 
 func initializeContext(isHeadless bool) (context.Context, context.CancelFunc) {
-	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag(headlessFlag, isHeadless))
-	acxt, stopActx := chromedp.NewExecAllocator(context.Background(), opts...)
-	ctx, stopCtx := chromedp.NewContext(acxt)
+	options := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag(headlessFlag, isHeadless))
+	allocCxt, stopAllocCtx := chromedp.NewExecAllocator(context.Background(), options...)
+	ctx, stopCtx := chromedp.NewContext(allocCxt)
 
 	cleanup := func() {
 		stopCtx()
-		stopActx()
+		stopAllocCtx()
 	}
 
 	return ctx, cleanup
 }
 
 // Initializes the headless browser and network event capturing
-func initializeBrowser(isHeadless bool) (context.Context, context.CancelFunc, <-chan networkResponse, error) {
-	eventsChan := make(chan networkResponse, networkResponseChannelSize)
-
+func initializeBrowser(isHeadless bool, networkEventHandler networkEventHandler) (context.Context, context.CancelFunc, error) {
 	ctx, cleanup := initializeContext(isHeadless)
 
 	if err := chromedp.Run(ctx, network.Enable()); err != nil {
 		cleanup()
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	chromedp.ListenTarget(ctx, captureEventsHandler(ctx, eventsChan))
+	chromedp.ListenTarget(ctx, createNetworkEventsHandler(networkEventHandler))
 
-	return ctx, cleanup, eventsChan, nil
+	return ctx, cleanup, nil
 }

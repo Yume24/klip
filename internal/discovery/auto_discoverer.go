@@ -38,7 +38,7 @@ func navigateToPage(ctx context.Context, url string) error {
 	return chromedp.Run(ctx, chromedp.Navigate(url), chromedp.WaitVisible(videoTag, chromedp.ByQuery))
 }
 
-func (AutoDiscoverer) discoverMediaManifest(ctx context.Context, pageURL string, urls <-chan *url.URL) (*url.URL, error) {
+func (AutoDiscoverer) discoverMediaManifest(ctx context.Context, pageURL string, manifests <-chan *url.URL) (*url.URL, error) {
 	timeoutCtx, timeoutCtxStop := context.WithTimeout(ctx, timeoutValue)
 	defer timeoutCtxStop()
 
@@ -50,7 +50,12 @@ func (AutoDiscoverer) discoverMediaManifest(ctx context.Context, pageURL string,
 		return nil, wrapError(err)
 	}
 
-	return waitForURL(timeoutCtx, urls)
+	select {
+	case <-timeoutCtx.Done():
+		return nil, errTimeout
+	case manifest := <-manifests:
+		return manifest, nil
+	}
 }
 
 func (AutoDiscoverer) isHeadless() bool {
