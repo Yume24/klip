@@ -9,7 +9,7 @@ import (
 
 type InteractiveDiscoverer struct{}
 
-const jsAlert = "alert(\"You can close this window now\")"
+const jsAlert = "alert(\"Done! Click OK to close\")"
 
 func (InteractiveDiscoverer) discoverMediaManifest(ctx context.Context, pageURL string, manifests <-chan *url.URL) (*url.URL, error) {
 	if err := chromedp.Run(ctx, chromedp.Navigate(pageURL)); err != nil {
@@ -23,12 +23,9 @@ func (InteractiveDiscoverer) discoverMediaManifest(ctx context.Context, pageURL 
 		return nil, ctx.Err()
 	}
 
-	if err := chromedp.Run(ctx, chromedp.Evaluate(jsAlert, nil)); err != nil {
-		// We can ignore any error at this stage
-		return manifest, nil
-	}
-
-	<-ctx.Done()
+	// alert() blocks until the user dismisses it
+	// that dismissal is the signal to close the browser and finish
+	chromedp.Run(ctx, chromedp.Evaluate(jsAlert, nil))
 	return manifest, nil
 }
 
