@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"errors"
 	"net/url"
 
 	"github.com/chromedp/chromedp"
@@ -17,7 +18,14 @@ func (InteractiveDiscoverer) discoverMediaManifest(ctx context.Context, pageURL 
 	}
 	manifest, err := waitForURL(ctx, urls)
 
+	if err != nil {
+		return nil, err
+	}
+
 	if err := chromedp.Run(ctx, chromedp.Evaluate(jsAlert, nil)); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return manifest, nil
+		}
 		return nil, err
 	}
 
