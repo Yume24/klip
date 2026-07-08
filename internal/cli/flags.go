@@ -6,7 +6,7 @@ import (
 	"klip/internal/core"
 )
 
-const invalidPositionalArgsNumMsgErr = "Expected %d arguments, got: %d. Type -h or --help for usage"
+const invalidPositionalArgsNumMsgErr = "expected %d arguments, got: %d — type -h or --help for usage"
 const positionalArgsNum = 1
 const fallbackArgPosition = 0
 
