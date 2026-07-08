@@ -12,8 +12,8 @@ import (
 
 // Corresponds to <video>
 const videoTag = "video"
-const timeoutValue = time.Second * 30
-const timeoutErrorMsg = "timeout: could not locate the video after %d seconds"
+const timeoutValue = time.Second * 15
+const timeoutErrorMsg = "timeout: could not locate the video after %d seconds. Hint: try --interactive mode"
 
 // Message returned after the search has timed out
 var errTimeout = fmt.Errorf(timeoutErrorMsg, int(timeoutValue.Seconds()))
