@@ -1,19 +1,33 @@
 package cli
 
 import (
+	"errors"
 	"flag"
 	"klip/internal/core"
 )
 
-const interactiveFlagUsage = "drive the browser interactively to locate the video"
-const interactiveFlagDefaultVal = false
-const interactiveFlagName = "interactive"
+const noURLMessageError = "missing URL: Type -h or --help for usage"
+const fallbackArgPosition = 0
 
-func defineFlags(flagSet *flag.FlagSet, config *core.Config) {
+func defineFlags(config *core.Config, flagSet *flag.FlagSet) {
 	flagSet.BoolVar(&config.Interactive, interactiveFlagName, interactiveFlagDefaultVal, interactiveFlagUsage)
+	flagSet.StringVar(&config.URL, urlFlagName, urlFlagDefaultVal, urlFlagUsage)
 }
 
 func loadFlagsIntoConfig(config *core.Config, flagSet *flag.FlagSet, args []string) error {
-	defineFlags(flagSet, config)
-	return flagSet.Parse(args)
+	defineFlags(config, flagSet)
+	if err := flagSet.Parse(args); err != nil {
+		return err
+	}
+
+	// Fall back to positional arg
+	if config.URL == "" {
+		if flagSet.NArg() > 0 {
+			config.URL = flagSet.Arg(fallbackArgPosition)
+		} else {
+			return errors.New(noURLMessageError)
+		}
+	}
+
+	return nil
 }
