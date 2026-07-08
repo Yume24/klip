@@ -21,8 +21,8 @@ func createNetworkEventsHandler(handler networkEventHandler) func(any) {
 
 func initializeContext(isHeadless bool) (context.Context, context.CancelFunc) {
 	options := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag(headlessFlag, isHeadless))
-	allocCxt, stopAllocCtx := chromedp.NewExecAllocator(context.Background(), options...)
-	ctx, stopCtx := chromedp.NewContext(allocCxt)
+	allocCtx, stopAllocCtx := chromedp.NewExecAllocator(context.Background(), options...)
+	ctx, stopCtx := chromedp.NewContext(allocCtx)
 
 	cleanup := func() {
 		stopCtx()
