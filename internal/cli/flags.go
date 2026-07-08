@@ -1,12 +1,13 @@
 package cli
 
 import (
-	"errors"
 	"flag"
+	"fmt"
 	"klip/internal/core"
 )
 
-const noURLMessageError = "missing URL: Type -h or --help for usage"
+const invalidPositionalArgsNumMsgErr = "Excpected %d arguments, got: %d. Type -h or --help for usage"
+const positionalArgsNum = 1
 const fallbackArgPosition = 0
 
 func defineFlags(config *core.Config, flagSet *flag.FlagSet) {
@@ -22,10 +23,10 @@ func loadFlagsIntoConfig(config *core.Config, flagSet *flag.FlagSet, args []stri
 
 	// Fall back to positional arg
 	if config.URL == "" {
-		if flagSet.NArg() > 0 {
+		if flagSet.NArg() == positionalArgsNum {
 			config.URL = flagSet.Arg(fallbackArgPosition)
 		} else {
-			return errors.New(noURLMessageError)
+			return fmt.Errorf(invalidPositionalArgsNumMsgErr, positionalArgsNum, flagSet.NArg())
 		}
 	}
 
