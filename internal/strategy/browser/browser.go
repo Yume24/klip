@@ -9,30 +9,26 @@ import (
 
 type Browser struct {
 	ctx context.Context
+	cancel context.CancelFunc
 }
 
-func (b *Browser) initializeContextIfEmpty() {
-	if b.ctx == nil {
-		b.ctx = context.Background()
-	}
+func NewBrowser() *Browser {
+	ctx, cancel := chromedp.NewContext(context.Background())
+	return &Browser{ctx: ctx, cancel: cancel}
 }
 
-func (b *Browser) CreateNewBrowserContext() (context.Context, context.CancelFunc) {
-	b.initializeContextIfEmpty()
-	ctx, cleanup := chromedp.NewContext(b.ctx)
-	b.ctx = ctx
-	return ctx, cleanup
-}
+func (b *Browser) NewTab(timeout time.Duration) (context.Context, context.CancelFunc) {
+	timeoutCtx, timeoutCancel := context.WithTimeout(b.ctx, timeout)
+	tabCtx, tabCancel := chromedp.NewContext(timeoutCtx)
 
-func (b *Browser) CreateNewBrowserContextWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
-	b.initializeContextIfEmpty()
-	timeoutCtx, timeoutCtxCancel := context.WithTimeout(b.ctx, timeout)
-	browserCtx, browserCtxCancel := chromedp.NewContext(timeoutCtx)
-
-	cleanup := func() {
-		browserCtxCancel()
-		timeoutCtxCancel()
+	cleanup := func ()  {
+		tabCancel()
+		timeoutCancel()
 	}
 
-	return browserCtx, cleanup
+	return tabCtx, cleanup
+}
+
+func (b *Browser) Close() {
+	b.cancel()
 }

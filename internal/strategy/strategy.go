@@ -11,6 +11,8 @@ import (
 const timeout = 15 * time.Second
 const noSuitableStrategyErrorMessage = "cannot download from this site"
 
+var ErrNoSuitableStrategy = errors.New(noSuitableStrategyErrorMessage)
+
 type DownloadStrategy interface {
 	Scout(ctx context.Context, pageURL string) (bool, error)
 	Download()
@@ -21,7 +23,7 @@ func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser
 
 	for _, strategy := range strategies {
 		wg.Go(func() {
-			ctx, cleanup := b.CreateNewBrowserContextWithTimeout(timeout)
+			ctx, cleanup := b.NewTab(timeout)
 			defer cleanup()
 
 			canHandle, err := strategy.Scout(ctx, pageURL)
@@ -40,9 +42,8 @@ func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser
 }
 
 func GetDownloadStrategy(pageURL string, strategies []DownloadStrategy) (DownloadStrategy, error) {
-	browser := &browser.Browser{}
-	_, cleanup := browser.CreateNewBrowserContext()
-	defer cleanup()
+	browser := browser.NewBrowser()
+	defer browser.Close()
 
 	ch := make(chan DownloadStrategy, len(strategies))
 
@@ -52,5 +53,5 @@ func GetDownloadStrategy(pageURL string, strategies []DownloadStrategy) (Downloa
 		return strategy, nil
 	}
 
-	return nil, errors.New(noSuitableStrategyErrorMessage)
+	return nil, ErrNoSuitableStrategy
 }

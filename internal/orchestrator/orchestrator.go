@@ -14,7 +14,7 @@ func Run(name string, args []string) error {
 		return err
 	}
 
-	var downloadStrategies []strategy.DownloadStrategy = []strategy.DownloadStrategy{
+	downloadStrategies := []strategy.DownloadStrategy{
 		&hls.HLSStrategy{},
 	}
 
