@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"klip/internal/cli"
 	"klip/internal/strategy"
+	"klip/internal/strategy/strategies/hls"
 )
 
 func Run(name string, args []string) error {
@@ -13,7 +14,11 @@ func Run(name string, args []string) error {
 		return err
 	}
 
-	downloadStrategy, err := strategy.GetDownloadStrategy(config.URL)
+	var downloadStrategies []strategy.DownloadStrategy = []strategy.DownloadStrategy{
+		&hls.HLSStrategy{},
+	}
+
+	downloadStrategy, err := strategy.GetDownloadStrategy(config.URL, downloadStrategies)
 	if err != nil {
 		return err
 	}

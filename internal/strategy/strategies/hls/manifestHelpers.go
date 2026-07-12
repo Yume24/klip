@@ -1,4 +1,4 @@
-package discovery
+package hls
 
 import (
 	"strings"

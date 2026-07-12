@@ -6,7 +6,7 @@ import (
 
 // User supplied config
 type config struct {
-	URL         string
+	URL string
 }
 
 func ParseArguments(name string, args []string) (*config, error) {
