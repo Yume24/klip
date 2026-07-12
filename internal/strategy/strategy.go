@@ -3,6 +3,7 @@ package strategy
 import (
 	"context"
 	"errors"
+	"klip/internal/strategy/browser"
 	"sync"
 	"time"
 )
@@ -15,12 +16,12 @@ type DownloadStrategy interface {
 	Download()
 }
 
-func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser, ch chan<- DownloadStrategy) {
+func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser.Browser, ch chan<- DownloadStrategy) {
 	var wg sync.WaitGroup
 
 	for _, strategy := range strategies {
 		wg.Go(func() {
-			ctx, cleanup := b.createNewBrowserContextWithTimeout(timeout)
+			ctx, cleanup := b.CreateNewBrowserContextWithTimeout(timeout)
 			defer cleanup()
 
 			canHandle, err := strategy.Scout(ctx, pageURL)
@@ -39,8 +40,8 @@ func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser
 }
 
 func GetDownloadStrategy(pageURL string, strategies []DownloadStrategy) (DownloadStrategy, error) {
-	browser := &browser{}
-	_, cleanup := browser.createNewBrowserContext()
+	browser := &browser.Browser{}
+	_, cleanup := browser.CreateNewBrowserContext()
 	defer cleanup()
 
 	ch := make(chan DownloadStrategy, len(strategies))
