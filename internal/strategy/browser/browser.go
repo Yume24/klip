@@ -8,7 +8,7 @@ import (
 )
 
 type Browser struct {
-	ctx context.Context
+	ctx    context.Context
 	cancel context.CancelFunc
 }
 
@@ -21,7 +21,7 @@ func (b *Browser) NewTab(timeout time.Duration) (context.Context, context.Cancel
 	timeoutCtx, timeoutCancel := context.WithTimeout(b.ctx, timeout)
 	tabCtx, tabCancel := chromedp.NewContext(timeoutCtx)
 
-	cleanup := func ()  {
+	cleanup := func() {
 		tabCancel()
 		timeoutCancel()
 	}
