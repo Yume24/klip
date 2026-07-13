@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
-	"fmt"
 	"klip/internal/cli"
 	"klip/internal/strategy"
 	"klip/internal/strategy/strategies/hls"
@@ -22,6 +21,6 @@ func Run(name string, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(downloadStrategy)
+	downloadStrategy.Download()
 	return nil
 }
