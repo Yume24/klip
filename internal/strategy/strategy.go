@@ -9,16 +9,17 @@ import (
 )
 
 const timeout = 15 * time.Second
+const smokeTestErrorChanSize = 1
 const noSuitableStrategyErrorMessage = "cannot download from this site"
 
 var ErrNoSuitableStrategy = errors.New(noSuitableStrategyErrorMessage)
 
 type DownloadStrategy interface {
-	Scout(ctx context.Context, pageURL string) (bool, error)
+	Scout(ctx context.Context, pageURL string) bool
 	Download()
 }
 
-func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser.Browser, ch chan<- DownloadStrategy) {
+func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser.Browser, suitableStrategies chan<- DownloadStrategy) {
 	var wg sync.WaitGroup
 
 	for _, strategy := range strategies {
@@ -26,18 +27,15 @@ func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser
 			ctx, cleanup := b.NewTab(timeout)
 			defer cleanup()
 
-			canHandle, err := strategy.Scout(ctx, pageURL)
-			if err != nil {
-				return
-			}
+			canHandle := strategy.Scout(ctx, pageURL)
 
 			if canHandle {
-				ch <- strategy
+				suitableStrategies <- strategy
 			}
 		})
 	}
 
-	go func() { wg.Wait(); close(ch) }()
+	go func() { wg.Wait(); close(suitableStrategies) }()
 
 }
 
@@ -45,13 +43,20 @@ func GetDownloadStrategy(pageURL string, strategies []DownloadStrategy) (Downloa
 	browser := browser.NewBrowser()
 	defer browser.Close()
 
-	ch := make(chan DownloadStrategy, len(strategies))
+	errors := make(chan error, smokeTestErrorChanSize)
+	go smokeTest(browser, pageURL, errors)
 
-	iterateStrategies(strategies, pageURL, browser, ch)
+	suitableStrategies := make(chan DownloadStrategy, len(strategies))
+	iterateStrategies(strategies, pageURL, browser, suitableStrategies)
 
-	if strategy, ok := <-ch; ok {
-		return strategy, nil
+	select {
+	case err := <-errors:
+		return nil, err
+	case strategy, ok := <-suitableStrategies:
+		if ok {
+			return strategy, nil
+		}
+
+		return nil, ErrNoSuitableStrategy
 	}
-
-	return nil, ErrNoSuitableStrategy
 }

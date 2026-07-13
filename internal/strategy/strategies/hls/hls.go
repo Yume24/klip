@@ -27,9 +27,9 @@ func createNetworkEventHandler(ch chan<- string) func(any) {
 	}
 }
 
-func (s *HLSStrategy) Scout(ctx context.Context, pageURL string) (bool, error) {
+func (s *HLSStrategy) Scout(ctx context.Context, pageURL string) bool {
 	if err := chromedp.Run(ctx, network.Enable()); err != nil {
-		return false, err
+		return false
 	}
 
 	manifests := make(chan string, manifestsChanSize)
@@ -37,15 +37,15 @@ func (s *HLSStrategy) Scout(ctx context.Context, pageURL string) (bool, error) {
 	chromedp.ListenTarget(ctx, createNetworkEventHandler(manifests))
 
 	if err := chromedp.Run(ctx, chromedp.Navigate(pageURL)); err != nil {
-		return false, err
+		return false
 	}
 
 	select {
 	case manifest := <-manifests:
 		s.url = manifest
-		return true, nil
+		return true
 	case <-ctx.Done():
-		return false, ctx.Err()
+		return false
 	}
 }
 
