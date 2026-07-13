@@ -29,6 +29,17 @@ func (b *Browser) NewTab(timeout time.Duration) (context.Context, context.Cancel
 	return tabCtx, cleanup
 }
 
+func (b *Browser) TryNavigate(pageURL string, timeout time.Duration) error {
+	ctx, cancel := b.NewTab(timeout)
+	defer cancel()
+
+	if err := chromedp.Run(ctx, chromedp.Navigate(pageURL)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (b *Browser) Close() {
 	b.cancel()
 }

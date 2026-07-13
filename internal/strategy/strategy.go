@@ -19,6 +19,23 @@ type DownloadStrategy interface {
 	Download()
 }
 
+func GetDownloadStrategy(pageURL string, strategies []DownloadStrategy) (DownloadStrategy, error) {
+	browser := browser.NewBrowser()
+	defer browser.Close()
+
+	errors := make(chan error, smokeTestErrorChanSize)
+	go func() {
+		if err := browser.TryNavigate(pageURL, timeout); err != nil {
+			errors <- browser.TryNavigate(pageURL, timeout)
+		}
+	}()
+
+	suitableStrategies := make(chan DownloadStrategy, len(strategies))
+	iterateStrategies(strategies, pageURL, browser, suitableStrategies)
+
+	return waitForSuitableStrategy(suitableStrategies, errors)
+}
+
 func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser.Browser, suitableStrategies chan<- DownloadStrategy) {
 	var wg sync.WaitGroup
 
@@ -39,16 +56,7 @@ func iterateStrategies(strategies []DownloadStrategy, pageURL string, b *browser
 
 }
 
-func GetDownloadStrategy(pageURL string, strategies []DownloadStrategy) (DownloadStrategy, error) {
-	browser := browser.NewBrowser()
-	defer browser.Close()
-
-	errors := make(chan error, smokeTestErrorChanSize)
-	go smokeTest(browser, pageURL, errors)
-
-	suitableStrategies := make(chan DownloadStrategy, len(strategies))
-	iterateStrategies(strategies, pageURL, browser, suitableStrategies)
-
+func waitForSuitableStrategy(suitableStrategies <-chan DownloadStrategy, errors <-chan error) (DownloadStrategy, error) {
 	select {
 	case err := <-errors:
 		return nil, err
