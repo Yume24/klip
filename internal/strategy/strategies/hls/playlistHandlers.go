@@ -3,15 +3,9 @@ package hls
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 )
-
-type orderedMediaSegment struct {
-	id   int
-	data io.Reader
-}
 
 func handleMasterPlaylist(playlist *m3u8.MasterPlaylist, playlistURL string) error {
 	variantBuf := bytes.Buffer{}

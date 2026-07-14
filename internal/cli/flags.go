@@ -12,11 +12,11 @@ const fallbackArgPosition = 0
 
 var errInvalidPositionalArgsNum = errors.New(invalidPositionalArgsNumMsg)
 
-func defineFlags(config *config, flagSet *flag.FlagSet) {
+func defineFlags(config *Config, flagSet *flag.FlagSet) {
 	flagSet.StringVar(&config.URL, urlFlagName, urlFlagDefaultVal, urlFlagUsage)
 }
 
-func loadFlagsIntoConfig(config *config, flagSet *flag.FlagSet, args []string) error {
+func loadFlagsIntoConfig(config *Config, flagSet *flag.FlagSet, args []string) error {
 	defineFlags(config, flagSet)
 	if err := flagSet.Parse(args); err != nil {
 		return err

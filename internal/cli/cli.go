@@ -5,15 +5,15 @@ import (
 )
 
 // User supplied config
-type config struct {
+type Config struct {
 	URL string
 }
 
-func ParseArguments(name string, args []string) (*config, error) {
-	config := &config{}
+func ParseArguments(name string, args []string) (Config, error) {
+	config := Config{}
 	flagSet := flag.NewFlagSet(name, flag.ExitOnError)
-	if err := loadFlagsIntoConfig(config, flagSet, args); err != nil {
-		return nil, err
+	if err := loadFlagsIntoConfig(&config, flagSet, args); err != nil {
+		return Config{}, err
 	}
 	return config, nil
 }
