@@ -1,10 +1,16 @@
 package orchestrator
 
 import (
-	"klip/internal/cli"
-	"klip/internal/strategy"
-	"klip/internal/strategy/strategies/hls"
+	"github.com/Yume24/klip/internal/cli"
+	"github.com/Yume24/klip/internal/strategy"
+	"github.com/Yume24/klip/internal/strategy/strategies/hls"
 )
+
+func createDownloadStrategies() []strategy.DownloadStrategy {
+	return []strategy.DownloadStrategy{
+		&hls.HLSStrategy{},
+	}
+}
 
 func Run(name string, args []string) error {
 	config, err := cli.ParseArguments(name, args)
@@ -13,14 +19,16 @@ func Run(name string, args []string) error {
 		return err
 	}
 
-	downloadStrategies := []strategy.DownloadStrategy{
-		&hls.HLSStrategy{},
-	}
+	downloadStrategies := createDownloadStrategies()
 
 	downloadStrategy, err := strategy.GetDownloadStrategy(config.URL, downloadStrategies)
 	if err != nil {
 		return err
 	}
-	downloadStrategy.Download()
+
+	err = downloadStrategy.Download()
+	if err != nil {
+		return err
+	}
 	return nil
 }

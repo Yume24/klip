@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"klip/internal/orchestrator"
 	"os"
+
+	"github.com/Yume24/klip/internal/orchestrator"
 )
 
 const appName = "Klip"

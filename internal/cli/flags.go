@@ -10,7 +10,7 @@ const invalidPositionalArgsNumMsg = "invalid number of arguments"
 const positionalArgsNum = 1
 const fallbackArgPosition = 0
 
-var invalidPositionalArgsNumError = errors.New(invalidPositionalArgsNumMsg)
+var errInvalidPositionalArgsNum = errors.New(invalidPositionalArgsNumMsg)
 
 func defineFlags(config *config, flagSet *flag.FlagSet) {
 	flagSet.StringVar(&config.URL, urlFlagName, urlFlagDefaultVal, urlFlagUsage)
@@ -27,7 +27,7 @@ func loadFlagsIntoConfig(config *config, flagSet *flag.FlagSet, args []string) e
 		if flagSet.NArg() == positionalArgsNum {
 			config.URL = flagSet.Arg(fallbackArgPosition)
 		} else {
-			return fmt.Errorf("%w: excpected %d, got %d", invalidPositionalArgsNumError, positionalArgsNum, flagSet.NArg())
+			return fmt.Errorf("%w: excpected %d, got %d", errInvalidPositionalArgsNum, positionalArgsNum, flagSet.NArg())
 		}
 	}
 

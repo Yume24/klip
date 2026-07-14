@@ -3,9 +3,10 @@ package strategy
 import (
 	"context"
 	"errors"
-	"klip/internal/strategy/browser"
 	"sync"
 	"time"
+
+	"github.com/Yume24/klip/internal/strategy/browser"
 )
 
 const timeout = 15 * time.Second
@@ -16,7 +17,7 @@ var ErrNoSuitableStrategy = errors.New(noSuitableStrategyErrorMessage)
 
 type DownloadStrategy interface {
 	Scout(ctx context.Context, pageURL string) bool
-	Download()
+	Download() error
 }
 
 func GetDownloadStrategy(pageURL string, strategies []DownloadStrategy) (DownloadStrategy, error) {
