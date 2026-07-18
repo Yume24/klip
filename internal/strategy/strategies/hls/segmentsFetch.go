@@ -2,30 +2,38 @@ package hls
 
 import (
 	"bytes"
-	"io"
-	"net/url"
+	"encoding/binary"
+	"encoding/hex"
+	"errors"
+	"fmt"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 )
 
 const errorChanSize = 1
+const hexPrefix = "0x"
 
 type orderedMediaSegment struct {
 	id   int
-	data io.Reader
+	data []byte
+	key  []byte
+	iv   []byte
 }
 
-func fetchAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) (<-chan orderedMediaSegment, error) {
+func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]orderedMediaSegment, error) {
 	var wg sync.WaitGroup
+	fmt.Println("Count():", playlist.Count(), "GetAllSegments():", len(playlist.GetAllSegments()))
+	keyCache := createKeyCache()
 
 	segments := make(chan orderedMediaSegment, playlist.Count())
 	errors := make(chan error, errorChanSize)
 
 	for i, segment := range playlist.GetAllSegments() {
 		wg.Go(func() {
-			orderedSegment, err := obtainOrderedSegment(segment, playlistURL, i)
+			orderedSegment, err := obtainOrderedSegment(segment, playlistURL, i, keyCache)
 			if err != nil {
 				select {
 				case errors <- err:
@@ -42,36 +50,70 @@ func fetchAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) (<-chan 
 	close(segments)
 	close(errors)
 
-	if err := <-errors; err != nil {
-		return nil, err
+	for err := range errors {
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return segments, nil
+	segmentsList := createSegmentsList(segments)
+	sortSegments(segmentsList)
+
+	return segmentsList, nil
 }
 
-func obtainOrderedSegment(segment *m3u8.MediaSegment, playlistURL string, i int) (orderedMediaSegment, error) {
-	segmentURL, err := resolveAbsoluteSegmentURL(playlistURL, segment.URI)
+func obtainOrderedSegment(segment *m3u8.MediaSegment, playlistURL string, i int, keys *keyCache) (orderedMediaSegment, error) {
+	result := orderedMediaSegment{id: i}
+	segmentURL, err := resolveAbsoluteURL(playlistURL, segment.URI)
 	if err != nil {
-		return orderedMediaSegment{}, err
+		return result, err
 	}
 
 	segmentData := &bytes.Buffer{}
 	if err := getResponseBody(segmentURL, segmentData); err != nil {
-		return orderedMediaSegment{}, err
+		return result, err
 	}
 
-	// decryptSegment(segmentData)
+	result.data = segmentData.Bytes()
 
-	return orderedMediaSegment{id: i, data: segmentData}, nil
-}
-
-func resolveAbsoluteSegmentURL(playlistURL string, segmentURL string) (string, error) {
-	playlistParsedURL, err := url.ParseRequestURI(playlistURL)
+	segmentKey, err := getAesEncryptionScheme(segment.Keys)
 	if err != nil {
-		return "", err
+		if errors.Is(err, errNoEncryption) {
+			return result, nil
+		} else {
+			return result, err
+		}
 	}
 
-	return playlistParsedURL.JoinPath(segmentURL).String(), nil
+	if segmentKey.IV != "" {
+		iv, err := hex.DecodeString(strings.TrimPrefix(segmentKey.IV, hexPrefix))
+		if err != nil {
+			return result, err
+		}
+		result.iv = iv
+	} else {
+		result.iv = make([]byte, ivLength)
+		binary.BigEndian.PutUint64(result.iv[8:], segment.SeqId)
+	}
+
+	keyURI, err := resolveAbsoluteURL(playlistURL, segmentKey.URI)
+	if err != nil {
+		return result, err
+	}
+
+	key, err := keys.getOrFetch(keyURI)
+	if err != nil {
+		return result, err
+	}
+
+	result.key = key
+
+	err = decryptSegment(&result)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
 }
 
 func createSegmentsList(segments <-chan orderedMediaSegment) []orderedMediaSegment {

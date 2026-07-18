@@ -3,13 +3,18 @@ package hls
 import (
 	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 )
 
 func handleMasterPlaylist(playlist *m3u8.MasterPlaylist, playlistURL string) error {
 	variantBuf := bytes.Buffer{}
-	if err := getResponseBody(playlist.Variants[0].URI, &variantBuf); err != nil {
+	mediaURI, err := resolveAbsoluteURL(playlistURL, playlist.Variants[0].URI)
+	if err != nil {
+		return err
+	}
+	if err := getResponseBody(mediaURI, &variantBuf); err != nil {
 		return err
 	}
 
@@ -22,22 +27,23 @@ func handleMasterPlaylist(playlist *m3u8.MasterPlaylist, playlistURL string) err
 		return err
 	}
 
-	return handleMediaPlaylist(mediaPlaylist, playlistURL)
+	return handleMediaPlaylist(mediaPlaylist, mediaURI)
 }
 
 func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) error {
 
-	segments, err := fetchAllSegments(playlist, playlistURL)
+	if !playlist.Closed {
+		return fmt.Errorf("live")
+	}
+	segmentsList, err := getAllSegments(playlist, playlistURL)
 	if err != nil {
 		return err
 	}
 
-	segmentsList := createSegmentsList(segments)
-
-	sortSegments(segmentsList)
-
+	f, _ := os.Create("test.ts")
+	defer f.Close()
 	for _, segment := range segmentsList {
-		fmt.Println(segment.id)
+		f.Write(segment.data)
 	}
 
 	return nil
