@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -25,18 +24,47 @@ type orderedMediaSegment struct {
 
 func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]orderedMediaSegment, error) {
 	var wg sync.WaitGroup
-	fmt.Println("Count():", playlist.Count(), "GetAllSegments():", len(playlist.GetAllSegments()))
-	keyCache := createKeyCache()
+	var currentKey [16]byte
+	var currentIV [16]byte
 
 	segments := make(chan orderedMediaSegment, playlist.Count())
-	errors := make(chan error, errorChanSize)
+	errorsCh := make(chan error, errorChanSize)
 
 	for i, segment := range playlist.GetAllSegments() {
+		if len(segment.Keys) > 0 {
+			segmentKey, err := getAesEncryptionScheme(segment.Keys)
+			if err != nil && !errors.Is(err, errNoEncryption) {
+				return nil, err
+			}
+
+			keyURI, err := resolveAbsoluteURL(playlistURL, segmentKey.URI)
+			if err != nil {
+				return nil, err
+			}
+			var keyBuf bytes.Buffer
+			err = getResponseBody(keyURI, &keyBuf)
+			if err != nil {
+				return nil, err
+			}
+			currentKey = [16]byte(keyBuf.Bytes())
+			if segmentKey.IV != "" {
+				iv, err := hex.DecodeString(strings.TrimPrefix(segmentKey.IV, hexPrefix))
+				if err != nil {
+					return nil, err
+				}
+				currentIV = [16]byte(iv)
+			} else {
+				binary.BigEndian.PutUint64(currentIV[8:], segment.SeqId)
+			}
+
+		}
+		key := currentKey
+		iv := currentIV
 		wg.Go(func() {
-			orderedSegment, err := obtainOrderedSegment(segment, playlistURL, i, keyCache)
+			orderedSegment, err := obtainOrderedSegment(segment, playlistURL, i, iv[:], key[:])
 			if err != nil {
 				select {
-				case errors <- err:
+				case errorsCh <- err:
 				default:
 				}
 
@@ -48,9 +76,9 @@ func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]ordered
 
 	wg.Wait()
 	close(segments)
-	close(errors)
+	close(errorsCh)
 
-	for err := range errors {
+	for err := range errorsCh {
 		if err != nil {
 			return nil, err
 		}
@@ -62,8 +90,8 @@ func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]ordered
 	return segmentsList, nil
 }
 
-func obtainOrderedSegment(segment *m3u8.MediaSegment, playlistURL string, i int, keys *keyCache) (orderedMediaSegment, error) {
-	result := orderedMediaSegment{id: i}
+func obtainOrderedSegment(segment *m3u8.MediaSegment, playlistURL string, i int, iv []byte, keyData []byte) (orderedMediaSegment, error) {
+	result := orderedMediaSegment{id: i, key: keyData, iv: iv}
 	segmentURL, err := resolveAbsoluteURL(playlistURL, segment.URI)
 	if err != nil {
 		return result, err
@@ -75,38 +103,6 @@ func obtainOrderedSegment(segment *m3u8.MediaSegment, playlistURL string, i int,
 	}
 
 	result.data = segmentData.Bytes()
-
-	segmentKey, err := getAesEncryptionScheme(segment.Keys)
-	if err != nil {
-		if errors.Is(err, errNoEncryption) {
-			return result, nil
-		} else {
-			return result, err
-		}
-	}
-
-	if segmentKey.IV != "" {
-		iv, err := hex.DecodeString(strings.TrimPrefix(segmentKey.IV, hexPrefix))
-		if err != nil {
-			return result, err
-		}
-		result.iv = iv
-	} else {
-		result.iv = make([]byte, ivLength)
-		binary.BigEndian.PutUint64(result.iv[8:], segment.SeqId)
-	}
-
-	keyURI, err := resolveAbsoluteURL(playlistURL, segmentKey.URI)
-	if err != nil {
-		return result, err
-	}
-
-	key, err := keys.getOrFetch(keyURI)
-	if err != nil {
-		return result, err
-	}
-
-	result.key = key
 
 	err = decryptSegment(&result)
 	if err != nil {
