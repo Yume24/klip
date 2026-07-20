@@ -16,7 +16,7 @@ func getResponseBody(url string, dest io.Writer) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("got %d response; url was: %s", resp.StatusCode, url)
+		return fmt.Errorf("got %d response", resp.StatusCode)
 	}
 
 	_, err = io.Copy(dest, resp.Body)

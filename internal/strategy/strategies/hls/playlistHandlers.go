@@ -2,15 +2,17 @@ package hls
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 )
 
-func handleMasterPlaylist(playlist *m3u8.MasterPlaylist, playlistURL string) error {
+var errUnsupportedPlaylist = errors.New("unsupported playlist type")
+
+func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL string) error {
 	variantBuf := bytes.Buffer{}
-	mediaURI, err := resolveAbsoluteURL(playlistURL, playlist.Variants[0].URI)
+	mediaURI, err := resolveAbsoluteURL(playlistURL, masterPlaylist.Variants[0].URI)
 	if err != nil {
 		return err
 	}
@@ -18,32 +20,29 @@ func handleMasterPlaylist(playlist *m3u8.MasterPlaylist, playlistURL string) err
 		return err
 	}
 
-	mediaPlaylist, err := m3u8.NewMediaPlaylist(0, 500000)
+	playlist, _, err := m3u8.Decode(variantBuf, true)
 	if err != nil {
 		return err
 	}
-
-	if err := mediaPlaylist.Decode(variantBuf, true); err != nil {
-		return err
+	if playlist, ok := playlist.(*m3u8.MediaPlaylist); ok {
+		return handleMediaPlaylist(playlist, playlistURL)
 	}
 
-	return handleMediaPlaylist(mediaPlaylist, mediaURI)
+	return errUnsupportedPlaylist
 }
 
 func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) error {
-
 	if !playlist.Closed {
-		return fmt.Errorf("live")
+		return errUnsupportedPlaylist
 	}
-	segmentsList, err := getAllSegments(playlist, playlistURL)
+
+	paths, err := getAllSegments(playlist, playlistURL)
 	if err != nil {
 		return err
 	}
 
-	f, _ := os.Create("test.ts")
-	defer f.Close()
-	for _, segment := range segmentsList {
-		f.Write(segment.data)
+	for _, path := range paths {
+		fmt.Println(path)
 	}
 
 	return nil
