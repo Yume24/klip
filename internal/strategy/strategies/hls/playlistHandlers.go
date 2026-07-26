@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"os/exec"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 )
@@ -42,18 +43,31 @@ func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) error
 		return err
 	}
 
-	concatSegments("test.ts", paths)
-	deleteSegments(paths)
+	finalPath, err := concatSegments(paths)
+	if err != nil {
+		return err
+	}
+	if err := deleteSegments(paths); err != nil {
+		return err
+	}
+
+	if err := convertToMP4(finalPath, "test"); err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func concatSegments(path string, paths []string) error {
-	f, err := os.Create(path)
+func concatSegments(paths []string) (string, error) {
+	var finalPath string
+
+	f, err := os.CreateTemp("", "")
 	if err != nil {
-		return err
+		return finalPath, err
 	}
 	defer f.Close()
+
+	finalPath = f.Name()
 
 	for _, segmentFilePath := range paths {
 		err := func() error {
@@ -70,11 +84,11 @@ func concatSegments(path string, paths []string) error {
 			return nil
 		}()
 		if err != nil {
-			return err
+			return finalPath, err
 		}
 	}
 
-	return nil
+	return finalPath, nil
 }
 
 func deleteSegments(paths []string) error {
@@ -84,5 +98,16 @@ func deleteSegments(paths []string) error {
 		}
 	}
 
+	return nil
+}
+
+func convertToMP4(pathToTemp string, outputPath string) error {
+	cmd := exec.Command("ffmpeg", "-y", "-i", pathToTemp, "-c", "copy", outputPath+".mp4")
+	if err := cmd.Run(); err != nil {
+		cmd = exec.Command("ffmpeg", "-y", "-i", pathToTemp, "-c:v", "libx264", "-c:a", "aac", outputPath+".mp4")
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
