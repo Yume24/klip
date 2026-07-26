@@ -3,7 +3,8 @@ package hls
 import (
 	"bytes"
 	"errors"
-	"fmt"
+	"io"
+	"os"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 )
@@ -41,8 +42,46 @@ func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) error
 		return err
 	}
 
-	for _, path := range paths {
-		fmt.Println(path)
+	concatSegments("test.ts", paths)
+	deleteSegments(paths)
+
+	return nil
+}
+
+func concatSegments(path string, paths []string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	for _, segmentFilePath := range paths {
+		err := func() error {
+			segmentFile, err := os.Open(segmentFilePath)
+			if err != nil {
+				return err
+			}
+			defer segmentFile.Close()
+			_, err = io.Copy(f, segmentFile)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func deleteSegments(paths []string) error {
+	for _, file := range paths {
+		if err := os.Remove(file); err != nil {
+			return err
+		}
 	}
 
 	return nil

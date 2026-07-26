@@ -10,8 +10,7 @@ import (
 
 const errorChanSize = 1
 
-const postfix = ".part"
-const segmentFilePerm = 0644
+const filePattern = "*.part"
 
 func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]string, error) {
 	keys, err := getAllKeys(playlist, playlistURL)
@@ -25,7 +24,7 @@ func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]string,
 
 	for i, segment := range playlist.GetAllSegments() {
 		wg.Go(func() {
-			segmentPath, err := downloadSegment(segment, playlistURL, i, keys[i])
+			segmentPath, err := downloadSegment(segment, playlistURL, keys[i])
 			if err != nil {
 				select {
 				case errorsCh <- err:
@@ -51,7 +50,7 @@ func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]string,
 	return paths, nil
 }
 
-func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, i int, decryption decrpytionInfo) (string, error) {
+func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, decryption decrpytionInfo) (string, error) {
 	var path string
 
 	segmentBuf := bytes.Buffer{}
@@ -68,15 +67,15 @@ func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, i int, decr
 	if err != nil {
 		return path, err
 	}
-
-	path = createFileName(segment.URI)
-	if err := os.WriteFile(path, decryptedSegment, segmentFilePerm); err != nil {
+	f, err := os.CreateTemp("", filePattern)
+	if err != nil {
+		return path, err
+	}
+	defer f.Close()
+	path = f.Name()
+	if _, err := f.Write(decryptedSegment); err != nil {
 		return path, err
 	}
 
 	return path, nil
-}
-
-func createFileName(prefix string) string {
-	return prefix + postfix
 }
