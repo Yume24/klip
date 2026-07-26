@@ -3,14 +3,14 @@ package hls
 import (
 	"bytes"
 	"os"
-	"strconv"
 	"sync"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 )
 
 const errorChanSize = 1
-const connector = "_"
+
+const postfix = ".part"
 const segmentFilePerm = 0644
 
 func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]string, error) {
@@ -69,7 +69,7 @@ func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, i int, decr
 		return path, err
 	}
 
-	path = createFileName("", i)
+	path = createFileName(segment.URI)
 	if err := os.WriteFile(path, decryptedSegment, segmentFilePerm); err != nil {
 		return path, err
 	}
@@ -77,6 +77,6 @@ func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, i int, decr
 	return path, nil
 }
 
-func createFileName(prefix string, id int) string {
-	return prefix + connector + strconv.Itoa(id)
+func createFileName(prefix string) string {
+	return prefix + postfix
 }

@@ -25,7 +25,7 @@ func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL strin
 		return err
 	}
 	if playlist, ok := playlist.(*m3u8.MediaPlaylist); ok {
-		return handleMediaPlaylist(playlist, playlistURL)
+		return handleMediaPlaylist(playlist, mediaURI)
 	}
 
 	return errUnsupportedPlaylist
