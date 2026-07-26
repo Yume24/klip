@@ -34,61 +34,59 @@ func getAllKeys(playlist *m3u8.MediaPlaylist, playlistURL string) (map[int]decrp
 	playlistLength := playlist.Count()
 	keyMap := make(map[int]decrpytionInfo, playlistLength)
 
+	var currentKeyData []byte
+	var currentKey m3u8.Key
+	var currentIV []byte
+
 	for i, segment := range playlist.GetAllSegments() {
-		key, iv, err := getKeyFromSegment(segment, playlistURL)
-		if err != nil {
-			if errors.Is(err, errNoEncryption) {
-				if i != 0 {
-					keyMap[i] = decrpytionInfo{key: keyMap[i-1].key, iv: iv[:]}
-				}
-				continue
-			} else {
+		segmentKey, err := getAesEncryptionScheme(segment.Keys)
+		if err != nil && !errors.Is(err, errNoEncryption) {
+			return nil, err
+		} else if err == nil {
+			currentKey = segmentKey
+			currentIV = nil
+
+			keyData, err := deriveKeyData(currentKey, playlistURL)
+			if err != nil {
 				return nil, err
 			}
+
+			currentKeyData = keyData[:]
+
 		}
 
-		keyMap[i] = decrpytionInfo{key: key[:], iv: iv[:]}
+		if currentKey.IV == "" {
+			iv := deriveIVFromSegment(segment)
+			currentIV = iv[:]
+		} else if currentIV == nil {
+			iv, err := deriveIVFromKey(currentKey)
+			if err != nil {
+				return nil, err
+			}
+			currentIV = iv[:]
+		}
+
+		keyMap[i] = decrpytionInfo{key: currentKeyData, iv: currentIV}
 	}
 
 	return keyMap, nil
 }
 
-func getKeyFromSegment(segment *m3u8.MediaSegment, playlistURL string) ([keyLength]byte, [ivLength]byte, error) {
-	var resultKey [keyLength]byte
+func deriveIVFromKey(key m3u8.Key) ([ivLength]byte, error) {
 	var resultIV [ivLength]byte
 
-	key, err := getAesEncryptionScheme(segment.Keys)
+	resultIV, err := decodeIV(key.IV)
 	if err != nil {
-		return resultKey, resultIV, err
+		return resultIV, err
 	}
+	return resultIV, nil
+}
 
-	if key.IV != "" {
-		resultIV, err = decodeIV(key.IV)
-		if err != nil {
-			return resultKey, resultIV, err
-		}
+func deriveIVFromSegment(segment *m3u8.MediaSegment) [ivLength]byte {
+	var resultIV [ivLength]byte
+	binary.BigEndian.PutUint64(resultIV[ivLength/2:], segment.SeqId)
 
-	} else {
-		binary.BigEndian.PutUint64(resultIV[ivLength/2:], segment.SeqId)
-	}
-
-	keyURI, err := resolveAbsoluteURL(playlistURL, key.URI)
-	if err != nil {
-		return resultKey, resultIV, err
-	}
-
-	keyBuf := &bytes.Buffer{}
-	if err := getResponseBody(keyURI, keyBuf); err != nil {
-		return resultKey, resultIV, err
-	}
-
-	if keyBuf.Len() != keyLength {
-		return resultKey, resultIV, errInvalidKeyLength
-	}
-
-	resultKey = [keyLength]byte(keyBuf.Bytes())
-
-	return resultKey, resultIV, nil
+	return resultIV
 }
 
 func decodeIV(iv string) ([ivLength]byte, error) {
@@ -106,6 +104,28 @@ func decodeIV(iv string) ([ivLength]byte, error) {
 
 	result = [ivLength]byte(ivDecoded)
 	return result, nil
+}
+
+func deriveKeyData(key m3u8.Key, playlistURL string) ([keyLength]byte, error) {
+	var resultKey [keyLength]byte
+
+	keyURI, err := resolveAbsoluteURL(playlistURL, key.URI)
+	if err != nil {
+		return resultKey, err
+	}
+
+	keyBuf := &bytes.Buffer{}
+	if err := getResponseBody(keyURI, keyBuf); err != nil {
+		return resultKey, err
+	}
+
+	if keyBuf.Len() != keyLength {
+		return resultKey, errInvalidKeyLength
+	}
+
+	resultKey = [keyLength]byte(keyBuf.Bytes())
+
+	return resultKey, nil
 }
 
 func getAesEncryptionScheme(keys []m3u8.Key) (m3u8.Key, error) {
