@@ -11,9 +11,8 @@ import (
 
 const timeout = 15 * time.Second
 const smokeTestErrorChanSize = 1
-const noSuitableStrategyErrorMessage = "cannot download from this site"
 
-var ErrNoSuitableStrategy = errors.New(noSuitableStrategyErrorMessage)
+var ErrNoSuitableStrategy = errors.New("cannot download from this site")
 
 type DownloadStrategy interface {
 	Scout(ctx context.Context, pageURL string) bool
