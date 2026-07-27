@@ -6,11 +6,10 @@ import (
 	"fmt"
 )
 
-const invalidPositionalArgsNumMsg = "invalid number of arguments"
 const positionalArgsNum = 1
 const fallbackArgPosition = 0
 
-var errInvalidPositionalArgsNum = errors.New(invalidPositionalArgsNumMsg)
+var errInvalidPositionalArgsNum = errors.New("invalid number of arguments")
 
 func defineFlags(config *Config, flagSet *flag.FlagSet) {
 	flagSet.StringVar(&config.URL, urlFlagName, urlFlagDefaultVal, urlFlagUsage)
