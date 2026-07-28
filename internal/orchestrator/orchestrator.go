@@ -26,7 +26,7 @@ func Run(name string, args []string) error {
 		return err
 	}
 
-	err = downloadStrategy.Download()
+	err = downloadStrategy.Download(config.FileName)
 	if err != nil {
 		return err
 	}

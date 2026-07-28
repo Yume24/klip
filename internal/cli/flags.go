@@ -13,6 +13,7 @@ var errInvalidPositionalArgsNum = errors.New("invalid number of arguments")
 
 func defineFlags(config *Config, flagSet *flag.FlagSet) {
 	flagSet.StringVar(&config.URL, urlFlagName, urlFlagDefaultVal, urlFlagUsage)
+	flagSet.StringVar(&config.FileName, fileNameFlagName, fileNameFlagDefaultVal, fileNameFlagUsage)
 }
 
 func loadFlagsIntoConfig(config *Config, flagSet *flag.FlagSet, args []string) error {

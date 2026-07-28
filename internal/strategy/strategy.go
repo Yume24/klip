@@ -16,7 +16,7 @@ var ErrNoSuitableStrategy = errors.New("cannot download from this site")
 
 type DownloadStrategy interface {
 	Scout(ctx context.Context, pageURL string) bool
-	Download() error
+	Download(output string) error
 }
 
 func GetDownloadStrategy(pageURL string, strategies []DownloadStrategy) (DownloadStrategy, error) {

@@ -13,7 +13,7 @@ import (
 
 var errUnsupportedPlaylist = errors.New("unsupported playlist type")
 
-func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL string) error {
+func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL string, output string) error {
 	variantBuf := bytes.Buffer{}
 	mediaURI, err := utils.ResolveAbsoluteURL(playlistURL, masterPlaylist.Variants[0].URI)
 	if err != nil {
@@ -28,13 +28,13 @@ func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL strin
 		return err
 	}
 	if playlist, ok := playlist.(*m3u8.MediaPlaylist); ok {
-		return handleMediaPlaylist(playlist, mediaURI)
+		return handleMediaPlaylist(playlist, mediaURI, output)
 	}
 
 	return errUnsupportedPlaylist
 }
 
-func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) error {
+func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string, output string) error {
 	if !playlist.Closed {
 		return errUnsupportedPlaylist
 	}
@@ -55,7 +55,7 @@ func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) error
 		return err
 	}
 
-	if err := convertToMP4(finalPath, "test"); err != nil {
+	if err := convertToMP4(finalPath, output); err != nil {
 		return err
 	}
 

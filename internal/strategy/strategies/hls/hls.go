@@ -52,7 +52,7 @@ func (s *HLSStrategy) Scout(ctx context.Context, pageURL string) bool {
 	}
 }
 
-func (s *HLSStrategy) Download() error {
+func (s *HLSStrategy) Download(output string) error {
 	buf := bytes.Buffer{}
 	if err := utils.GetResponseBody(s.url, &buf); err != nil {
 		return err
@@ -65,11 +65,11 @@ func (s *HLSStrategy) Download() error {
 
 	switch listType {
 	case m3u8.MEDIA:
-		if err := handleMediaPlaylist(playlist.(*m3u8.MediaPlaylist), s.url); err != nil {
+		if err := handleMediaPlaylist(playlist.(*m3u8.MediaPlaylist), s.url, output); err != nil {
 			return err
 		}
 	case m3u8.MASTER:
-		if err := handleMasterPlaylist(playlist.(*m3u8.MasterPlaylist), s.url); err != nil {
+		if err := handleMasterPlaylist(playlist.(*m3u8.MasterPlaylist), s.url, output); err != nil {
 			return err
 		}
 	}

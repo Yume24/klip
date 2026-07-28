@@ -6,7 +6,8 @@ import (
 
 // User supplied config
 type Config struct {
-	URL string
+	URL      string
+	FileName string
 }
 
 func ParseArguments(name string, args []string) (Config, error) {
