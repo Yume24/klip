@@ -47,6 +47,9 @@ func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) error
 	if err != nil {
 		return err
 	}
+
+	defer os.Remove(finalPath)
+
 	if err := deleteSegments(paths); err != nil {
 		return err
 	}
