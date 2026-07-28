@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
+	"github.com/Yume24/klip/internal/utils"
 )
 
 const noneMethod = "none"
@@ -109,13 +110,13 @@ func decodeIV(iv string) ([ivLength]byte, error) {
 func deriveKeyData(key m3u8.Key, playlistURL string) ([keyLength]byte, error) {
 	var resultKey [keyLength]byte
 
-	keyURI, err := resolveAbsoluteURL(playlistURL, key.URI)
+	keyURI, err := utils.ResolveAbsoluteURL(playlistURL, key.URI)
 	if err != nil {
 		return resultKey, err
 	}
 
 	keyBuf := &bytes.Buffer{}
-	if err := getResponseBody(keyURI, keyBuf); err != nil {
+	if err := utils.GetResponseBody(keyURI, keyBuf); err != nil {
 		return resultKey, err
 	}
 

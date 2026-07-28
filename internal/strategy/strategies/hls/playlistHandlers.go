@@ -8,17 +8,18 @@ import (
 	"os/exec"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
+	"github.com/Yume24/klip/internal/utils"
 )
 
 var errUnsupportedPlaylist = errors.New("unsupported playlist type")
 
 func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL string) error {
 	variantBuf := bytes.Buffer{}
-	mediaURI, err := resolveAbsoluteURL(playlistURL, masterPlaylist.Variants[0].URI)
+	mediaURI, err := utils.ResolveAbsoluteURL(playlistURL, masterPlaylist.Variants[0].URI)
 	if err != nil {
 		return err
 	}
-	if err := getResponseBody(mediaURI, &variantBuf); err != nil {
+	if err := utils.GetResponseBody(mediaURI, &variantBuf); err != nil {
 		return err
 	}
 

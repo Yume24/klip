@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
+	"github.com/Yume24/klip/internal/utils"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
@@ -53,7 +54,7 @@ func (s *HLSStrategy) Scout(ctx context.Context, pageURL string) bool {
 
 func (s *HLSStrategy) Download() error {
 	buf := bytes.Buffer{}
-	if err := getResponseBody(s.url, &buf); err != nil {
+	if err := utils.GetResponseBody(s.url, &buf); err != nil {
 		return err
 	}
 

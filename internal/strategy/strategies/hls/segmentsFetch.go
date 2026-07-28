@@ -1,80 +1,48 @@
 package hls
 
 import (
-	"bytes"
-	"os"
-	"sync"
-
 	"github.com/Eyevinn/hls-m3u8/m3u8"
+	"github.com/Yume24/klip/internal/utils"
 )
 
-const filePattern = "*.part"
-
 func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]string, error) {
-	var wg sync.WaitGroup
-	hasMap := playlist.Map != nil
-	count := playlist.Count()
-	if hasMap {
-		count += 1
-	}
-	paths := make([]string, count)
-	segmentPaths := paths
-	errorsCh := make(chan error, 1)
-
-	if hasMap {
-		segmentPaths = paths[1:]
-		wg.Go(func() {
-			mapPath, err := downloadMap(playlist.Map.URI, playlistURL)
-			if err != nil {
-				select {
-				case errorsCh <- err:
-				default:
-				}
-
-				return
-			}
-
-			paths[0] = mapPath
-		})
-	}
-
 	keys, err := getAllKeys(playlist, playlistURL)
 	if err != nil {
 		return nil, err
 	}
+	jobs := buildFetchPlan(playlist, playlistURL, keys)
+	return utils.RunFetchJobs(jobs)
+}
 
-	for i, segment := range playlist.GetAllSegments() {
-		wg.Go(func() {
-			segmentPath, err := downloadSegment(segment, playlistURL, keys[i])
-			if err != nil {
-				select {
-				case errorsCh <- err:
-				default:
-				}
+func buildFetchPlan(playlist *m3u8.MediaPlaylist, playlistURL string, keys map[int]decrpytionInfo) []utils.FetchJob {
+	hasMap := playlist.Map != nil
+	count := playlist.Count()
 
-				return
-			}
+	if hasMap {
+		count += 1
+	}
 
-			segmentPaths[i] = segmentPath
+	jobs := make([]utils.FetchJob, 0, count)
+
+	if hasMap {
+		jobs = append(jobs, func() (string, error) {
+			return downloadMap(playlist.Map.URI, playlistURL)
 		})
 	}
 
-	go func() {
-		wg.Wait()
-		close(errorsCh)
-	}()
-
-	if err, ok := <-errorsCh; ok {
-		return nil, err
+	for i, segment := range playlist.GetAllSegments() {
+		jobs = append(jobs, func() (string, error) {
+			return downloadSegment(segment, playlistURL, keys[i])
+		})
 	}
 
-	return paths, nil
+	return jobs
 }
 
 func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, decryption decrpytionInfo) (string, error) {
 	var path string
 
-	segmentBuf, err := resolveURLAndDownload(playlistURL, segment.URI)
+	segmentBuf, err := utils.ResolveURLAndDownload(playlistURL, segment.URI)
 	if err != nil {
 		return path, err
 	}
@@ -84,7 +52,7 @@ func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, decryption 
 		return path, err
 	}
 
-	path, err = createTempFile(decryptedSegment)
+	path, err = utils.CreateTempFile(decryptedSegment)
 	if err != nil {
 		return path, err
 	}
@@ -95,47 +63,13 @@ func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, decryption 
 func downloadMap(mapURL, playlistURL string) (string, error) {
 	var path string
 
-	mapData, err := resolveURLAndDownload(playlistURL, mapURL)
+	mapData, err := utils.ResolveURLAndDownload(playlistURL, mapURL)
 	if err != nil {
 		return path, err
 	}
 
-	path, err = createTempFile(mapData.Bytes())
+	path, err = utils.CreateTempFile(mapData.Bytes())
 	if err != nil {
-		return path, err
-	}
-
-	return path, nil
-}
-
-func resolveURLAndDownload(baseURL, relativeURL string) (*bytes.Buffer, error) {
-	dataBuf := &bytes.Buffer{}
-
-	dataURL, err := resolveAbsoluteURL(baseURL, relativeURL)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := getResponseBody(dataURL, dataBuf); err != nil {
-		return nil, err
-	}
-
-	return dataBuf, nil
-}
-
-func createTempFile(data []byte) (string, error) {
-	var path string
-
-	f, err := os.CreateTemp("", filePattern)
-	if err != nil {
-		return path, err
-	}
-
-	defer f.Close()
-
-	path = f.Name()
-
-	if _, err := f.Write(data); err != nil {
 		return path, err
 	}
 
