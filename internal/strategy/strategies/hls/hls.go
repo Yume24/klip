@@ -3,6 +3,8 @@ package hls
 import (
 	"bytes"
 	"context"
+	"os"
+	"os/exec"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 	"github.com/Yume24/klip/internal/utils"
@@ -65,14 +67,40 @@ func (s *HLSStrategy) Download(output string) error {
 
 	switch listType {
 	case m3u8.MEDIA:
-		if err := handleMediaPlaylist(playlist.(*m3u8.MediaPlaylist), s.url, output); err != nil {
+		filePath, err := handleMediaPlaylist(playlist.(*m3u8.MediaPlaylist), s.url)
+		if err != nil {
 			return err
 		}
+		defer os.Remove(filePath)
+
+		return convertToMP4([]string{filePath}, output)
 	case m3u8.MASTER:
-		if err := handleMasterPlaylist(playlist.(*m3u8.MasterPlaylist), s.url, output); err != nil {
+		filePaths, err := handleMasterPlaylist(playlist.(*m3u8.MasterPlaylist), s.url)
+		if err != nil {
+			return err
+		}
+		for _, filePath := range filePaths {
+			defer os.Remove(filePath)
+		}
+
+		return convertToMP4(filePaths, output)
+	}
+
+	return nil
+}
+
+func convertToMP4(pathsToTemp []string, outputPath string) error {
+	inputArgs := make([]string, 0)
+	for _, path := range pathsToTemp {
+		inputArgs = append(inputArgs, "-i", path)
+	}
+
+	cmd := exec.Command("ffmpeg", append([]string{"-y"}, append(inputArgs, "-c", "copy", outputPath+".mp4")...)...)
+	if err := cmd.Run(); err != nil {
+		cmd = exec.Command("ffmpeg", append([]string{"-y"}, append(inputArgs, "-c:v", "libx264", "-c:a", "aac", outputPath+".mp4")...)...)
+		if err := cmd.Run(); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }

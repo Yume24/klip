@@ -5,61 +5,154 @@ import (
 	"errors"
 	"io"
 	"os"
-	"os/exec"
+	"strings"
+	"sync"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 	"github.com/Yume24/klip/internal/utils"
 )
 
+const audioType = "audio"
+
 var errUnsupportedPlaylist = errors.New("unsupported playlist type")
+var errNoAudio = errors.New("no audio in playlist")
 
-func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL string, output string) error {
-	variantBuf := bytes.Buffer{}
-	mediaURI, err := utils.ResolveAbsoluteURL(playlistURL, masterPlaylist.Variants[0].URI)
+func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL string) ([]string, error) {
+	var wg sync.WaitGroup
+	errorCh := make(chan error, 1)
+	pathsCh := make(chan string, 2)
+
+	variant := decideVariant(masterPlaylist.Variants)
+
+	audioRelativeURI, err := findAudioPlaylist(variant.Alternatives)
+	if err != nil && !errors.Is(err, errNoAudio) {
+		return nil, err
+	} else {
+		audioURI, err := utils.ResolveAbsoluteURL(playlistURL, audioRelativeURI)
+		if err != nil {
+			return nil, err
+		}
+
+		wg.Go(func() {
+			playlist, err := getMediaPlaylist(audioURI)
+			if err != nil {
+				select {
+				case errorCh <- err:
+				default:
+				}
+
+				return
+			}
+
+			paths, err := handleMediaPlaylist(playlist, audioURI)
+			if err != nil {
+				select {
+				case errorCh <- err:
+				default:
+				}
+
+				return
+			}
+
+			pathsCh <- paths
+		})
+	}
+
+	mediaURI, err := utils.ResolveAbsoluteURL(playlistURL, variant.URI)
 	if err != nil {
-		return err
-	}
-	if err := utils.GetResponseBody(mediaURI, &variantBuf); err != nil {
-		return err
+		return nil, err
 	}
 
-	playlist, _, err := m3u8.Decode(variantBuf, true)
-	if err != nil {
-		return err
-	}
-	if playlist, ok := playlist.(*m3u8.MediaPlaylist); ok {
-		return handleMediaPlaylist(playlist, mediaURI, output)
+	wg.Go(func() {
+		playlist, err := getMediaPlaylist(mediaURI)
+		if err != nil {
+			select {
+			case errorCh <- err:
+			default:
+			}
+
+			return
+		}
+
+		paths, err := handleMediaPlaylist(playlist, mediaURI)
+		if err != nil {
+			select {
+			case errorCh <- err:
+			default:
+			}
+
+			return
+		}
+
+		pathsCh <- paths
+	})
+
+	go func() {
+		wg.Wait()
+		close(errorCh)
+	}()
+
+	if err, ok := <-errorCh; ok {
+		return nil, err
 	}
 
-	return errUnsupportedPlaylist
+	paths := make([]string, 0, 2)
+	for path := range pathsCh {
+		paths = append(paths, path)
+	}
+
+	return paths, nil
 }
 
-func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string, output string) error {
+func getMediaPlaylist(playlistURL string) (*m3u8.MediaPlaylist, error) {
+	playlistBuf := bytes.Buffer{}
+	if err := utils.GetResponseBody(playlistURL, &playlistBuf); err != nil {
+		return nil, err
+	}
+
+	playlist, _, err := m3u8.Decode(playlistBuf, true)
+	if err != nil {
+		return nil, err
+	}
+	if playlist, ok := playlist.(*m3u8.MediaPlaylist); ok {
+		return playlist, nil
+	}
+
+	return nil, errUnsupportedPlaylist
+}
+
+func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) (string, error) {
+	var filePath string
+
 	if !playlist.Closed {
-		return errUnsupportedPlaylist
+		return filePath, errUnsupportedPlaylist
 	}
 
 	paths, err := getAllSegments(playlist, playlistURL)
 	if err != nil {
-		return err
+		return filePath, err
 	}
 
-	finalPath, err := concatSegments(paths)
+	filePath, err = concatSegments(paths)
 	if err != nil {
-		return err
+		return filePath, err
 	}
-
-	defer os.Remove(finalPath)
 
 	if err := deleteSegments(paths); err != nil {
-		return err
+		return filePath, err
 	}
 
-	if err := convertToMP4(finalPath, output); err != nil {
-		return err
+	return filePath, nil
+}
+
+func findAudioPlaylist(alternatives []*m3u8.Alternative) (string, error) {
+	for _, alternative := range alternatives {
+		if strings.ToLower(alternative.Type) == audioType {
+			return alternative.URI, nil
+		}
 	}
 
-	return nil
+	return "", errNoAudio
 }
 
 func concatSegments(paths []string) (string, error) {
@@ -105,13 +198,6 @@ func deleteSegments(paths []string) error {
 	return nil
 }
 
-func convertToMP4(pathToTemp string, outputPath string) error {
-	cmd := exec.Command("ffmpeg", "-y", "-i", pathToTemp, "-c", "copy", outputPath+".mp4")
-	if err := cmd.Run(); err != nil {
-		cmd = exec.Command("ffmpeg", "-y", "-i", pathToTemp, "-c:v", "libx264", "-c:a", "aac", outputPath+".mp4")
-		if err := cmd.Run(); err != nil {
-			return err
-		}
-	}
-	return nil
+func decideVariant(variants []*m3u8.Variant) *m3u8.Variant {
+	return variants[0]
 }
