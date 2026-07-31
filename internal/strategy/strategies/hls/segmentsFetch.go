@@ -14,7 +14,7 @@ func getAllSegments(playlist *m3u8.MediaPlaylist, playlistURL string) ([]string,
 	return utils.RunFetchJobs(jobs)
 }
 
-func buildFetchPlan(playlist *m3u8.MediaPlaylist, playlistURL string, keys map[int]decrpytionInfo) []utils.FetchJob {
+func buildFetchPlan(playlist *m3u8.MediaPlaylist, playlistURL string, keys map[int]decrpytionInfo) []utils.FetchJob[string] {
 	hasMap := playlist.Map != nil
 	count := playlist.Count()
 
@@ -22,7 +22,7 @@ func buildFetchPlan(playlist *m3u8.MediaPlaylist, playlistURL string, keys map[i
 		count += 1
 	}
 
-	jobs := make([]utils.FetchJob, 0, count)
+	jobs := make([]utils.FetchJob[string], 0, count)
 
 	if hasMap {
 		jobs = append(jobs, func() (string, error) {

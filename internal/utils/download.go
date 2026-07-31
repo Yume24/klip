@@ -2,25 +2,36 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"sync"
+
+	"golang.org/x/sync/semaphore"
 )
 
-type FetchJob = func() (string, error)
+type FetchJob[T any] = func() (T, error)
 
-func RunFetchJobs(jobs []FetchJob) ([]string, error) {
-	paths := make([]string, len(jobs))
+func RunFetchJobs[T any](jobs []FetchJob[T]) ([]T, error) {
+	results := make([]T, len(jobs))
 	errCh := make(chan error, 1)
 
 	var wg sync.WaitGroup
+	sem := semaphore.NewWeighted(8)
+	ctx := context.Background()
+
 	for i, job := range jobs {
 		wg.Go(func() {
-			path, err := job()
+			if err := sem.Acquire(ctx, 1); err != nil {
+				return
+			}
+			defer sem.Release(1)
+			result, err := job()
 			if err != nil {
 				select {
+				case <-ctx.Done():
 				case errCh <- err:
 				default:
 				}
@@ -28,7 +39,7 @@ func RunFetchJobs(jobs []FetchJob) ([]string, error) {
 				return
 			}
 
-			paths[i] = path
+			results[i] = result
 		})
 	}
 
@@ -41,7 +52,7 @@ func RunFetchJobs(jobs []FetchJob) ([]string, error) {
 		return nil, err
 	}
 
-	return paths, nil
+	return results, nil
 }
 
 func GetResponseBody(url string, dest io.Writer) error {
