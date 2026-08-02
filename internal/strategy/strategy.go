@@ -26,7 +26,7 @@ func GetDownloadStrategy(pageURL string, strategies []DownloadStrategy) (Downloa
 	errors := make(chan error, smokeTestErrorChanSize)
 	go func() {
 		if err := browser.TryNavigate(pageURL, timeout); err != nil {
-			errors <- browser.TryNavigate(pageURL, timeout)
+			errors <- err
 		}
 	}()
 

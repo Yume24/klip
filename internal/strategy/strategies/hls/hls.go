@@ -97,13 +97,17 @@ func (s *HLSStrategy) Download(output string) error {
 }
 
 func convertToMP4(outputPath string, pathsToTemp ...string) error {
-	baseArgs := createBaseFfmpegArgs(outputPath, pathsToTemp)
+	baseArgs := createBaseFfmpegArgs(pathsToTemp)
 
 	ffmpegCopyArgs := append(baseArgs, ffmpegCopyArgs...)
+	ffmpegCopyArgs = append(ffmpegCopyArgs, outputPath+mp4Extension)
+
 	ffmpegCopyCmd := exec.Command(ffmpegCmd, ffmpegCopyArgs...)
 
 	if err := ffmpegCopyCmd.Run(); err != nil {
 		ffmpedRemuxArgs := append(baseArgs, ffmpegRemuxArgs...)
+		ffmpedRemuxArgs = append(ffmpedRemuxArgs, outputPath+mp4Extension)
+
 		ffmpegRemuxCmd := exec.Command(ffmpegCmd, ffmpedRemuxArgs...)
 		if err := ffmpegRemuxCmd.Run(); err != nil {
 			return err
@@ -112,11 +116,11 @@ func convertToMP4(outputPath string, pathsToTemp ...string) error {
 	return nil
 }
 
-func createBaseFfmpegArgs(outputPath string, inputFiles []string) []string {
-	inputArgs := make([]string, 0, len(inputFiles)*2+2)
+func createBaseFfmpegArgs(inputFiles []string) []string {
+	inputArgs := make([]string, 0, len(inputFiles)*2+1)
 	for _, path := range inputFiles {
 		inputArgs = append(inputArgs, inputFlag, path)
 	}
-	inputArgs = append(inputArgs, yFlag, outputPath+mp4Extension)
+	inputArgs = append(inputArgs, yFlag)
 	return inputArgs
 }
