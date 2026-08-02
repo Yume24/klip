@@ -78,7 +78,7 @@ func (s *HLSStrategy) Download(output string) error {
 		if err != nil {
 			return err
 		}
-		defer os.Remove(filePath)
+		defer os.Remove(filePath) //nolint:errcheck
 
 		return convertToMP4(output, filePath)
 	case m3u8.MASTER:
@@ -87,7 +87,7 @@ func (s *HLSStrategy) Download(output string) error {
 			return err
 		}
 		for _, filePath := range filePaths {
-			defer os.Remove(filePath)
+			defer os.Remove(filePath) //nolint:errcheck
 		}
 
 		return convertToMP4(output, filePaths...)

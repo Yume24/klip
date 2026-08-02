@@ -75,7 +75,7 @@ func GetResponseBody(url string, dest io.Writer) (err error) {
 				return err
 			}
 
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			if resp.StatusCode != http.StatusOK {
 				return fmt.Errorf("got %d response", resp.StatusCode)

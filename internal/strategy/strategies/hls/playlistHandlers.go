@@ -146,7 +146,7 @@ func concatSegments(paths []string) (string, error) {
 	if err != nil {
 		return finalPath, err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	finalPath = f.Name()
 
@@ -156,7 +156,7 @@ func concatSegments(paths []string) (string, error) {
 			if err != nil {
 				return err
 			}
-			defer segmentFile.Close()
+			defer segmentFile.Close() //nolint:errcheck
 			_, err = io.Copy(f, segmentFile)
 			if err != nil {
 				return err

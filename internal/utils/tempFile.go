@@ -10,7 +10,7 @@ func CreateTempFile(data []byte) (path string, err error) {
 		return
 	}
 
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	path = f.Name()
 
