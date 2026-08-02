@@ -13,6 +13,13 @@ import (
 )
 
 const manifestsChanSize = 1
+const ffmpegCmd = "ffmpeg"
+const mp4Extension = ".mp4"
+const yFlag = "-y"
+const inputFlag = "-i"
+
+var ffmpegCopyArgs = []string{"-c", "copy"}
+var ffmpegRemuxArgs = []string{"-c:v", "libx264", "-c:a", "aac"}
 
 type HLSStrategy struct {
 	url string
@@ -73,7 +80,7 @@ func (s *HLSStrategy) Download(output string) error {
 		}
 		defer os.Remove(filePath)
 
-		return convertToMP4([]string{filePath}, output)
+		return convertToMP4(output, filePath)
 	case m3u8.MASTER:
 		filePaths, err := handleMasterPlaylist(playlist.(*m3u8.MasterPlaylist), s.url)
 		if err != nil {
@@ -83,24 +90,33 @@ func (s *HLSStrategy) Download(output string) error {
 			defer os.Remove(filePath)
 		}
 
-		return convertToMP4(filePaths, output)
+		return convertToMP4(output, filePaths...)
 	}
 
 	return nil
 }
 
-func convertToMP4(pathsToTemp []string, outputPath string) error {
-	inputArgs := make([]string, 0)
-	for _, path := range pathsToTemp {
-		inputArgs = append(inputArgs, "-i", path)
-	}
+func convertToMP4(outputPath string, pathsToTemp ...string) error {
+	baseArgs := createBaseFfmpegArgs(outputPath, pathsToTemp)
 
-	cmd := exec.Command("ffmpeg", append([]string{"-y"}, append(inputArgs, "-c", "copy", outputPath+".mp4")...)...)
-	if err := cmd.Run(); err != nil {
-		cmd = exec.Command("ffmpeg", append([]string{"-y"}, append(inputArgs, "-c:v", "libx264", "-c:a", "aac", outputPath+".mp4")...)...)
-		if err := cmd.Run(); err != nil {
+	ffmpegCopyArgs := append(baseArgs, ffmpegCopyArgs...)
+	ffmpegCopyCmd := exec.Command(ffmpegCmd, ffmpegCopyArgs...)
+
+	if err := ffmpegCopyCmd.Run(); err != nil {
+		ffmpedRemuxArgs := append(baseArgs, ffmpegRemuxArgs...)
+		ffmpegRemuxCmd := exec.Command(ffmpegCmd, ffmpedRemuxArgs...)
+		if err := ffmpegRemuxCmd.Run(); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func createBaseFfmpegArgs(outputPath string, inputFiles []string) []string {
+	inputArgs := make([]string, 0, len(inputFiles)*2+2)
+	for _, path := range inputFiles {
+		inputArgs = append(inputArgs, inputFlag, path)
+	}
+	inputArgs = append(inputArgs, yFlag, outputPath+mp4Extension)
+	return inputArgs
 }

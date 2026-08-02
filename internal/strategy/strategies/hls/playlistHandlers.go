@@ -13,49 +13,29 @@ import (
 )
 
 const audioType = "audio"
+const errorChSize = 1
+const pathsChSize = 2
 
 var errUnsupportedPlaylist = errors.New("unsupported playlist type")
 var errNoAudio = errors.New("no audio in playlist")
 
 func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL string) ([]string, error) {
 	var wg sync.WaitGroup
-	errorCh := make(chan error, 1)
-	pathsCh := make(chan string, 2)
+	errorCh := make(chan error, errorChSize)
+	pathsCh := make(chan string, pathsChSize)
 
 	variant := decideVariant(masterPlaylist.Variants)
 
 	audioRelativeURI, err := findAudioPlaylist(variant.Alternatives)
 	if err != nil && !errors.Is(err, errNoAudio) {
 		return nil, err
-	} else {
+	} else if err == nil {
 		audioURI, err := utils.ResolveAbsoluteURL(playlistURL, audioRelativeURI)
 		if err != nil {
 			return nil, err
 		}
 
-		wg.Go(func() {
-			playlist, err := getMediaPlaylist(audioURI)
-			if err != nil {
-				select {
-				case errorCh <- err:
-				default:
-				}
-
-				return
-			}
-
-			paths, err := handleMediaPlaylist(playlist, audioURI)
-			if err != nil {
-				select {
-				case errorCh <- err:
-				default:
-				}
-
-				return
-			}
-
-			pathsCh <- paths
-		})
+		wg.Go(launchMediaDownload(audioURI, errorCh, pathsCh))
 	}
 
 	mediaURI, err := utils.ResolveAbsoluteURL(playlistURL, variant.URI)
@@ -63,29 +43,7 @@ func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL strin
 		return nil, err
 	}
 
-	wg.Go(func() {
-		playlist, err := getMediaPlaylist(mediaURI)
-		if err != nil {
-			select {
-			case errorCh <- err:
-			default:
-			}
-
-			return
-		}
-
-		paths, err := handleMediaPlaylist(playlist, mediaURI)
-		if err != nil {
-			select {
-			case errorCh <- err:
-			default:
-			}
-
-			return
-		}
-
-		pathsCh <- paths
-	})
+	wg.Go(launchMediaDownload(mediaURI, errorCh, pathsCh))
 
 	go func() {
 		wg.Wait()
@@ -96,7 +54,7 @@ func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL strin
 		return nil, err
 	}
 
-	paths := make([]string, 0, 2)
+	paths := make([]string, 0, pathsChSize)
 	for path := range pathsCh {
 		paths = append(paths, path)
 	}
@@ -143,6 +101,32 @@ func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) (stri
 	}
 
 	return filePath, nil
+}
+
+func launchMediaDownload(uri string, errorCh chan<- error, pathsCh chan<- string) func() {
+	return func() {
+		playlist, err := getMediaPlaylist(uri)
+		if err != nil {
+			select {
+			case errorCh <- err:
+			default:
+			}
+
+			return
+		}
+
+		paths, err := handleMediaPlaylist(playlist, uri)
+		if err != nil {
+			select {
+			case errorCh <- err:
+			default:
+			}
+
+			return
+		}
+
+		pathsCh <- paths
+	}
 }
 
 func findAudioPlaylist(alternatives []*m3u8.Alternative) (string, error) {

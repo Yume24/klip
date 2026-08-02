@@ -4,21 +4,19 @@ import "os"
 
 const filePattern = "*.part"
 
-func CreateTempFile(data []byte) (string, error) {
-	var path string
-
+func CreateTempFile(data []byte) (path string, err error) {
 	f, err := os.CreateTemp("", filePattern)
 	if err != nil {
-		return path, err
+		return
 	}
 
 	defer f.Close()
 
 	path = f.Name()
 
-	if _, err := f.Write(data); err != nil {
-		return path, err
+	if _, err = f.Write(data); err != nil {
+		return
 	}
 
-	return path, nil
+	return
 }

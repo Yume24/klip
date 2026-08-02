@@ -19,7 +19,7 @@ func buildFetchPlan(playlist *m3u8.MediaPlaylist, playlistURL string, keys map[i
 	count := playlist.Count()
 
 	if hasMap {
-		count += 1
+		count++
 	}
 
 	jobs := make([]utils.FetchJob[string], 0, count)
@@ -39,39 +39,35 @@ func buildFetchPlan(playlist *m3u8.MediaPlaylist, playlistURL string, keys map[i
 	return jobs
 }
 
-func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, decryption decrpytionInfo) (string, error) {
-	var path string
-
+func downloadSegment(segment *m3u8.MediaSegment, playlistURL string, decryption decrpytionInfo) (path string, err error) {
 	segmentBuf, err := utils.ResolveURLAndDownload(playlistURL, segment.URI)
 	if err != nil {
-		return path, err
+		return
 	}
 
 	decryptedSegment, err := decryptSegment(segmentBuf.Bytes(), decryption.key, decryption.iv)
 	if err != nil {
-		return path, err
+		return
 	}
 
 	path, err = utils.CreateTempFile(decryptedSegment)
 	if err != nil {
-		return path, err
+		return
 	}
 
-	return path, nil
+	return
 }
 
-func downloadMap(mapURL, playlistURL string) (string, error) {
-	var path string
-
+func downloadMap(mapURL, playlistURL string) (path string, err error) {
 	mapData, err := utils.ResolveURLAndDownload(playlistURL, mapURL)
 	if err != nil {
-		return path, err
+		return
 	}
 
 	path, err = utils.CreateTempFile(mapData.Bytes())
 	if err != nil {
-		return path, err
+		return
 	}
 
-	return path, nil
+	return
 }

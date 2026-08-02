@@ -8,9 +8,17 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/semaphore"
 )
+
+const maxConcurrency = 16
+const clientTimeout = 30 * time.Second
+const maxRetries = 3
+const backoff = time.Second
+
+var httpClient = http.Client{Timeout: clientTimeout}
 
 type FetchJob[T any] = func() (T, error)
 
@@ -19,7 +27,7 @@ func RunFetchJobs[T any](jobs []FetchJob[T]) ([]T, error) {
 	errCh := make(chan error, 1)
 
 	var wg sync.WaitGroup
-	sem := semaphore.NewWeighted(8)
+	sem := semaphore.NewWeighted(maxConcurrency)
 	ctx := context.Background()
 
 	for i, job := range jobs {
@@ -55,24 +63,36 @@ func RunFetchJobs[T any](jobs []FetchJob[T]) ([]T, error) {
 	return results, nil
 }
 
-func GetResponseBody(url string, dest io.Writer) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
+func GetResponseBody(url string, dest io.Writer) (err error) {
+	for attempt := range maxRetries {
+		err = func() error {
+			resp, err := httpClient.Get(url)
+			if err != nil {
+				return err
+			}
+
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("got %d response", resp.StatusCode)
+			}
+
+			_, err = io.Copy(dest, resp.Body)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}()
+
+		if err == nil {
+			return
+		}
+
+		time.Sleep(time.Duration(attempt+1) * backoff)
 	}
 
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("got %d response", resp.StatusCode)
-	}
-
-	_, err = io.Copy(dest, resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return
 }
 
 func ResolveAbsoluteURL(baseURL string, relativeURL string) (string, error) {

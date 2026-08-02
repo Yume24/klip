@@ -73,51 +73,35 @@ func getAllKeys(playlist *m3u8.MediaPlaylist, playlistURL string) (map[int]decrp
 	return keyMap, nil
 }
 
-func deriveIVFromKey(key m3u8.Key) ([ivLength]byte, error) {
-	var resultIV [ivLength]byte
-
-	resultIV, err := decodeIV(key.IV)
-	if err != nil {
-		return resultIV, err
-	}
-	return resultIV, nil
-}
-
-func deriveIVFromSegment(segment *m3u8.MediaSegment) [ivLength]byte {
-	var resultIV [ivLength]byte
-	binary.BigEndian.PutUint64(resultIV[ivLength/2:], segment.SeqId)
-
-	return resultIV
-}
-
-func decodeIV(iv string) ([ivLength]byte, error) {
-	var result [ivLength]byte
-
-	iv = strings.TrimPrefix(iv, hexPrefix)
+func deriveIVFromKey(key m3u8.Key) (resultIV [ivLength]byte, err error) {
+	iv := strings.TrimPrefix(key.IV, hexPrefix)
 	ivDecoded, err := hex.DecodeString(iv)
 	if err != nil {
-		return result, err
+		return
 	}
 
 	if len(ivDecoded) != ivLength {
-		return result, errInvalidIVLength
+		return resultIV, errInvalidIVLength
 	}
 
-	result = [ivLength]byte(ivDecoded)
-	return result, nil
+	resultIV = [ivLength]byte(ivDecoded)
+	return
 }
 
-func deriveKeyData(key m3u8.Key, playlistURL string) ([keyLength]byte, error) {
-	var resultKey [keyLength]byte
+func deriveIVFromSegment(segment *m3u8.MediaSegment) (resultIV [ivLength]byte) {
+	binary.BigEndian.PutUint64(resultIV[ivLength/2:], segment.SeqId)
+	return
+}
 
+func deriveKeyData(key m3u8.Key, playlistURL string) (resultKey [keyLength]byte, err error) {
 	keyURI, err := utils.ResolveAbsoluteURL(playlistURL, key.URI)
 	if err != nil {
-		return resultKey, err
+		return
 	}
 
 	keyBuf := &bytes.Buffer{}
-	if err := utils.GetResponseBody(keyURI, keyBuf); err != nil {
-		return resultKey, err
+	if err = utils.GetResponseBody(keyURI, keyBuf); err != nil {
+		return
 	}
 
 	if keyBuf.Len() != keyLength {
@@ -126,12 +110,10 @@ func deriveKeyData(key m3u8.Key, playlistURL string) ([keyLength]byte, error) {
 
 	resultKey = [keyLength]byte(keyBuf.Bytes())
 
-	return resultKey, nil
+	return
 }
 
-func getAesEncryptionScheme(keys []m3u8.Key) (m3u8.Key, error) {
-	var foundKey m3u8.Key
-
+func getAesEncryptionScheme(keys []m3u8.Key) (foundKey m3u8.Key, _ error) {
 	if len(keys) == 0 {
 		return foundKey, errNoEncryption
 	}

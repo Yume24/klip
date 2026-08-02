@@ -10,11 +10,10 @@ type Config struct {
 	FileName string
 }
 
-func ParseArguments(name string, args []string) (Config, error) {
-	config := Config{}
+func ParseArguments(name string, args []string) (config Config, err error) {
 	flagSet := flag.NewFlagSet(name, flag.ExitOnError)
-	if err := loadFlagsIntoConfig(&config, flagSet, args); err != nil {
-		return Config{}, err
+	if err = loadFlagsIntoConfig(&config, flagSet, args); err != nil {
+		return
 	}
-	return config, nil
+	return
 }
