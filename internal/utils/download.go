@@ -64,7 +64,11 @@ func RunFetchJobs[T any](jobs []FetchJob[T]) ([]T, error) {
 }
 
 func GetResponseBody(url string, dest io.Writer) (err error) {
+	responseBuf := &bytes.Buffer{}
+
 	for attempt := range maxRetries {
+		responseBuf.Reset()
+
 		err = func() error {
 			resp, err := httpClient.Get(url)
 			if err != nil {
@@ -77,7 +81,7 @@ func GetResponseBody(url string, dest io.Writer) (err error) {
 				return fmt.Errorf("got %d response", resp.StatusCode)
 			}
 
-			_, err = io.Copy(dest, resp.Body)
+			_, err = io.Copy(responseBuf, resp.Body)
 			if err != nil {
 				return err
 			}
@@ -86,6 +90,7 @@ func GetResponseBody(url string, dest io.Writer) (err error) {
 		}()
 
 		if err == nil {
+			_, err = io.Copy(dest, responseBuf)
 			return
 		}
 
