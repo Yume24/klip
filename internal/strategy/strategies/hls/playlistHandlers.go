@@ -48,6 +48,7 @@ func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL strin
 	go func() {
 		wg.Wait()
 		close(errorCh)
+		close(pathsCh)
 	}()
 
 	if err, ok := <-errorCh; ok {
