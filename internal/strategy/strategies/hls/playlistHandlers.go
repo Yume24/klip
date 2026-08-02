@@ -18,13 +18,17 @@ const pathsChSize = 2
 
 var errUnsupportedPlaylist = errors.New("unsupported playlist type")
 var errNoAudio = errors.New("no audio in playlist")
+var errNoVariants = errors.New("playlist has no variants")
 
 func handleMasterPlaylist(masterPlaylist *m3u8.MasterPlaylist, playlistURL string) ([]string, error) {
 	var wg sync.WaitGroup
 	errorCh := make(chan error, errorChSize)
 	pathsCh := make(chan string, pathsChSize)
 
-	variant := decideVariant(masterPlaylist.Variants)
+	variant, err := decideVariant(masterPlaylist.Variants)
+	if err != nil {
+		return nil, err
+	}
 
 	audioRelativeURI, err := findAudioPlaylist(variant.Alternatives)
 	if err != nil && !errors.Is(err, errNoAudio) {
@@ -183,6 +187,9 @@ func deleteSegments(paths []string) error {
 	return nil
 }
 
-func decideVariant(variants []*m3u8.Variant) *m3u8.Variant {
-	return variants[0]
+func decideVariant(variants []*m3u8.Variant) (*m3u8.Variant, error) {
+	if len(variants) == 0 {
+		return nil, errNoVariants
+	}
+	return variants[0], nil
 }

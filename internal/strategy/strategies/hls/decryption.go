@@ -19,7 +19,8 @@ const keyLength = 16
 const ivLength = 16
 const hexPrefix = "0x"
 
-var errNoEncryption = errors.New("no encrpytion scheme")
+var errNoKeytag = errors.New("no encrpytion scheme")
+var errEncryptionDisabled = errors.New("encryption method set to none")
 var errNoAesEncryption = errors.New("no AES-128 encryption scheme")
 var errInvalidIVLength = errors.New("invalid IV length")
 var errInvalidKeyLength = errors.New("invalid key length")
@@ -41,9 +42,7 @@ func getAllKeys(playlist *m3u8.MediaPlaylist, playlistURL string) (map[int]decrp
 
 	for i, segment := range playlist.GetAllSegments() {
 		segmentKey, err := getAesEncryptionScheme(segment.Keys)
-		if err != nil && !errors.Is(err, errNoEncryption) {
-			return nil, err
-		} else if err == nil {
+		if err == nil {
 			currentKey = segmentKey
 			currentIV = nil
 
@@ -54,6 +53,11 @@ func getAllKeys(playlist *m3u8.MediaPlaylist, playlistURL string) (map[int]decrp
 
 			currentKeyData = keyData[:]
 
+		} else if errors.Is(err, errEncryptionDisabled) {
+			currentKeyData = nil
+			currentKey = m3u8.Key{}
+		} else {
+			return nil, err
 		}
 
 		if currentKey.IV == "" {
@@ -115,7 +119,7 @@ func deriveKeyData(key m3u8.Key, playlistURL string) (resultKey [keyLength]byte,
 
 func getAesEncryptionScheme(keys []m3u8.Key) (foundKey m3u8.Key, _ error) {
 	if len(keys) == 0 {
-		return foundKey, errNoEncryption
+		return foundKey, errNoKeytag
 	}
 
 	for _, key := range keys {
@@ -124,7 +128,7 @@ func getAesEncryptionScheme(keys []m3u8.Key) (foundKey m3u8.Key, _ error) {
 			foundKey = key
 			return foundKey, nil
 		case noneMethod:
-			return foundKey, errNoEncryption
+			return foundKey, errEncryptionDisabled
 		}
 	}
 
@@ -143,7 +147,7 @@ func decryptSegment(segmentData, key, iv []byte) ([]byte, error) {
 
 	mode := cipher.NewCBCDecrypter(block, iv)
 
-	if len(segmentData)%aes.BlockSize != 0 {
+	if len(segmentData) == 0 || len(segmentData)%aes.BlockSize != 0 {
 		return segmentData, errInvalidBlockSize
 	}
 
