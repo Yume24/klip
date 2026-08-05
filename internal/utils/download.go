@@ -21,6 +21,8 @@ const backoff = time.Second
 var httpClient = http.Client{Timeout: clientTimeout}
 
 type FetchJob[T any] = func() (T, error)
+type RequestOption = func(*http.Request)
+type ByteRange struct{ Length, Offset int64 }
 
 func RunFetchJobs[T any](jobs []FetchJob[T]) ([]T, error) {
 	results := make([]T, len(jobs))
@@ -63,41 +65,43 @@ func RunFetchJobs[T any](jobs []FetchJob[T]) ([]T, error) {
 	return results, nil
 }
 
-func GetResponseBody(url string, dest io.Writer) (err error) {
-	responseBuf := &bytes.Buffer{}
+func WithByteRange(b ByteRange) RequestOption {
+	return func(req *http.Request) {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", b.Offset, b.Offset+b.Length-1))
+	}
+}
 
-	for attempt := range maxRetries {
-		responseBuf.Reset()
-
-		err = func() error {
-			resp, err := httpClient.Get(url)
-			if err != nil {
-				return err
-			}
-
-			defer resp.Body.Close() //nolint:errcheck
-
-			if resp.StatusCode != http.StatusOK {
-				return fmt.Errorf("got %d response", resp.StatusCode)
-			}
-
-			_, err = io.Copy(responseBuf, resp.Body)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		}()
-
-		if err == nil {
-			_, err = io.Copy(dest, responseBuf)
-			return
-		}
-
-		time.Sleep(time.Duration(attempt+1) * backoff)
+func GetResponseBody(url string, dst io.Writer, opts ...RequestOption) error {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	for _, opt := range opts {
+		opt(req)
 	}
 
-	return
+	wantStatusCode := http.StatusOK
+	if req.Header.Get("Range") != "" {
+		wantStatusCode = http.StatusPartialContent
+	}
+
+	data, err := retry(func() (data *bytes.Buffer, err error) {
+		code, err := fetch(req, data)
+		if err != nil {
+			return
+		}
+		if code != wantStatusCode {
+			return nil, fmt.Errorf("got: %d status code, want: %d", code, wantStatusCode)
+		}
+
+		return
+	}, maxRetries, backoff)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(dst, data)
+	return err
 }
 
 func ResolveAbsoluteURL(baseURL string, relativeURL string) (string, error) {
@@ -114,17 +118,28 @@ func ResolveAbsoluteURL(baseURL string, relativeURL string) (string, error) {
 	return parsedBase.ResolveReference(parsedRelative).String(), nil
 }
 
-func ResolveURLAndDownload(baseURL, relativeURL string) (*bytes.Buffer, error) {
-	dataBuf := &bytes.Buffer{}
-
-	dataURL, err := ResolveAbsoluteURL(baseURL, relativeURL)
+func fetch(req *http.Request, dst io.Writer) (statusCode int, err error) {
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	if err := GetResponseBody(dataURL, dataBuf); err != nil {
-		return nil, err
+	defer resp.Body.Close() //nolint:errcheck
+
+	_, err = io.Copy(dst, resp.Body)
+	return
+}
+
+func retry[T any](retriable func() (T, error), maxRetries int, backoff time.Duration) (result T, err error) {
+	for attempt := range maxRetries {
+		result, err = retriable()
+		if err == nil {
+			return
+		}
+		if attempt < maxRetries-1 {
+			time.Sleep(backoff * time.Duration(attempt+1))
+		}
 	}
 
-	return dataBuf, nil
+	return
 }

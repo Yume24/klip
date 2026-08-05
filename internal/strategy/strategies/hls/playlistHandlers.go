@@ -84,28 +84,26 @@ func getMediaPlaylist(playlistURL string) (*m3u8.MediaPlaylist, error) {
 	return nil, errUnsupportedPlaylist
 }
 
-func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) (string, error) {
-	var filePath string
-
+func handleMediaPlaylist(playlist *m3u8.MediaPlaylist, playlistURL string) (filePath string, err error) {
 	if !playlist.Closed {
 		return filePath, errUnsupportedPlaylist
 	}
 
 	paths, err := getAllSegments(playlist, playlistURL)
 	if err != nil {
-		return filePath, err
+		return
 	}
 
 	filePath, err = concatSegments(paths)
 	if err != nil {
-		return filePath, err
+		return
 	}
 
-	if err := deleteSegments(paths); err != nil {
-		return filePath, err
+	if err = deleteSegments(paths); err != nil {
+		return
 	}
 
-	return filePath, nil
+	return
 }
 
 func launchMediaDownload(uri string, errorCh chan<- error, pathsCh chan<- string) func() {
