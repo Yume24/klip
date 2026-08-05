@@ -2,6 +2,8 @@ package hls
 
 import (
 	"bytes"
+	"fmt"
+	"math"
 
 	"github.com/Eyevinn/hls-m3u8/m3u8"
 	"github.com/Yume24/klip/internal/utils"
@@ -28,6 +30,7 @@ func buildFetchPlan(playlist *m3u8.MediaPlaylist, playlistURL string, keys map[i
 	}
 
 	jobs := make([]utils.FetchJob[string], 0, count)
+	offsets := make(map[string]int64, count)
 
 	if hasMap {
 		url, err := utils.ResolveAbsoluteURL(playlistURL, playlist.Map.URI)
@@ -35,8 +38,13 @@ func buildFetchPlan(playlist *m3u8.MediaPlaylist, playlistURL string, keys map[i
 			return nil, err
 		}
 
+		byteRange, err := resolveRange(url, playlist.Map.Limit, playlist.Map.Offset, offsets)
+		if err != nil {
+			return nil, err
+		}
+
 		jobs = append(jobs, func() (string, error) {
-			return downloadMap(url, playlist.Map.Limit, playlist.Map.Offset)
+			return downloadMap(url, byteRange)
 		})
 	}
 
@@ -46,23 +54,47 @@ func buildFetchPlan(playlist *m3u8.MediaPlaylist, playlistURL string, keys map[i
 			return nil, err
 		}
 
+		byteRange, err := resolveRange(url, playlist.Map.Limit, playlist.Map.Offset, offsets)
+		if err != nil {
+			return nil, err
+		}
+
 		jobs = append(jobs, func() (string, error) {
-			return downloadSegment(url, segment.Limit, segment.Offset, keys[i])
+			return downloadSegment(url, byteRange, keys[i])
 		})
 	}
 
 	return jobs, nil
 }
 
-func downloadSegment(segmentURL string, length, offset int64, decryption decrpytionInfo) (path string, err error) {
-	var fetchOpts []utils.RequestOption
-	segmentBuf := &bytes.Buffer{}
-
-	if length > 0 {
-		fetchOpts = append(fetchOpts, utils.WithByteRange(utils.ByteRange{Offset: offset, Length: length}))
+func resolveRange(url string, limit, offset int64, offsets map[string]int64) (br utils.ByteRange, err error) {
+	if limit <= 0 {
+		return // Fetch whole resource
 	}
 
-	err = utils.GetResponseBody(segmentURL, segmentBuf, fetchOpts...)
+	if offset < 0 || offset > math.MaxInt64-limit {
+		return br, fmt.Errorf("byterange out of range: %d@%d", limit, offset)
+	}
+
+	curr, seen := offsets[url]
+	if seen && offset == 0 {
+		br.Offset = curr
+	}
+
+	if offset < curr {
+		return br, fmt.Errorf("byterange %d@%d overlaps prior range in %s", limit, offset, url)
+	}
+
+	offsets[url] = offset + limit
+	br.Length = limit
+
+	return
+}
+
+func downloadSegment(segmentURL string, br utils.ByteRange, decryption decrpytionInfo) (path string, err error) {
+	segmentBuf := &bytes.Buffer{}
+
+	err = utils.GetResponseBody(segmentURL, segmentBuf, utils.WithByteRange(br))
 	if err != nil {
 		return
 	}
@@ -80,15 +112,10 @@ func downloadSegment(segmentURL string, length, offset int64, decryption decrpyt
 	return
 }
 
-func downloadMap(mapURL string, length, offset int64) (path string, err error) {
-	var fetchOpts []utils.RequestOption
+func downloadMap(mapURL string, br utils.ByteRange) (path string, err error) {
 	mapBuf := &bytes.Buffer{}
 
-	if length > 0 {
-		fetchOpts = append(fetchOpts, utils.WithByteRange(utils.ByteRange{Offset: offset, Length: length}))
-	}
-
-	err = utils.GetResponseBody(mapURL, mapBuf, fetchOpts...)
+	err = utils.GetResponseBody(mapURL, mapBuf, utils.WithByteRange(br))
 	if err != nil {
 		return
 	}

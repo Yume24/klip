@@ -67,7 +67,9 @@ func RunFetchJobs[T any](jobs []FetchJob[T]) ([]T, error) {
 
 func WithByteRange(b ByteRange) RequestOption {
 	return func(req *http.Request) {
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", b.Offset, b.Offset+b.Length-1))
+		if b.Length > 0 {
+			req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", b.Offset, b.Offset+b.Length-1))
+		}
 	}
 }
 
